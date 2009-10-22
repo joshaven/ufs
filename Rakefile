@@ -4,13 +4,13 @@ require 'rake'
 begin
   require 'jeweler'
   Jeweler::Tasks.new do |gem|
-    gem.name = "fads"
+    gem.name = "fsds"
     gem.summary = %Q{Use your File System As a Data Store}
     gem.description = %Q{TODO: longer description of your gem}
     gem.email = "yourtech@gmail.com"
-    gem.homepage = "http://github.com/joshaven/fads"
+    gem.homepage = "http://github.com/joshaven/fsds"
     gem.authors = ["Joshaven Potter"]
-    gem.rubyforge_project = "fads"
+    gem.rubyforge_project = "fsds"
     gem.add_development_dependency "rspec", ">= 1.2.9"
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
@@ -42,7 +42,7 @@ Rake::RDocTask.new do |rdoc|
   version = File.exist?('VERSION') ? File.read('VERSION') : ""
 
   rdoc.rdoc_dir = 'rdoc'
-  rdoc.title = "fads #{version}"
+  rdoc.title = "fsds #{version}"
   rdoc.rdoc_files.include('README*')
   rdoc.rdoc_files.include('lib/**/*.rb')
 end

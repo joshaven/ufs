@@ -1,10 +1,10 @@
-module FSO::File
+module FSDS::File
   def greet
-    "Hello from FSO::File"
+    "Hello from FSDS::File"
   end
   
   
-  # # This breaks out of the FSO wrapper and allows access to the standard objects: File, Dir
+  # # This breaks out of the FSDS wrapper and allows access to the standard objects: File, Dir
   # def method_missing(mth, *args)
   #   # this assumes that a path is the standard input... this is not very protected... need to check Dile & Dir API's
   #   args = [path] if args.empty?

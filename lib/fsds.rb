@@ -1,19 +1,19 @@
-class FSO
+class FSDS
   # require 'adapters/fs/file'
   
-  FSO::IOError = "IOError: Cannot communicate with file."
+  FSDS::IOError = "IOError: Cannot communicate with file."
   attr_accessor :path, :permissions, :owner, :group
-  # Retuns a FSO (File System Object).  The path, permissions, ownership & group can be 
+  # Retuns a FSDS (File System Object).  The path, permissions, ownership & group can be 
   # specified as attributes. The filesystem is not touched by this method.  The methods that 
   # make changes to the filesystem are generally ending with an exclamation point (!) and the 
   # methods that read from the filesystem are generally ending with a question mark (?).
   #
   # Examples:
-  #   FSO.new '/tmp/test'
-  #   FSO.new '/tmp/test', 755
-  #   FSO.new '/tmp/test', 755, 'joshaven'
-  #   FSO.new '/tmp/test', 755, 'joshaven', 'staff'
-  #   FSO.new '/tmp/test', nil, 'joshaven'     # The attributes are ordered, however they are ignored if nil.
+  #   FSDS.new '/tmp/test'
+  #   FSDS.new '/tmp/test', 755
+  #   FSDS.new '/tmp/test', 755, 'joshaven'
+  #   FSDS.new '/tmp/test', 755, 'joshaven', 'staff'
+  #   FSDS.new '/tmp/test', nil, 'joshaven'     # The attributes are ordered, however they are ignored if nil.
   def initialize(dir=nil, priv=nil, own=nil, grp=nil)
     self.path        = File.expand_path(dir) unless dir.nil?
     self.permissions = priv unless priv.nil?
@@ -21,7 +21,7 @@ class FSO
     self.group       = grp unless grp.nil?
   end
 
-  # Return the type of the FSO.  The answer will be one of: File, Dir, or nil
+  # Return the type of the FSDS.  The answer will be one of: File, Dir, or nil
   def type
     # return File if File.file?(path || '')
     # return Dir if File.directory?(path || '')
@@ -29,40 +29,40 @@ class FSO
     File.file?(path || '') ? File : (File.directory?(path || '') ? Dir : nil)
   end
 
-  # Shortcut method to finding the type of a filesystem object without instantizing an FSO.
+  # Shortcut method to finding the type of a filesystem object without instantizing an FSDS.
   #
   # Example:
-  #   FSO.type('/tmp')   #=> Dir
+  #   FSDS.type('/tmp')   #=> Dir
   def self.type(*args)
-    FSO.new(*args).send(:type)
+    FSDS.new(*args).send(:type)
   end
   
-  # Compares the type of the FSO with the given type.  Returns true or false.
+  # Compares the type of the FSDS with the given type.  Returns true or false.
   #
   # Example:
-  #   FSO.new('/tmp') === Dir  #=> true
+  #   FSDS.new('/tmp') === Dir  #=> true
   def ===(klass)
     self.type == klass
   end
   
-  # Compares the given path string with the associated FSO path string. Returns true or false.
+  # Compares the given path string with the associated FSDS path string. Returns true or false.
   #
   # Example:
-  #   FSO.new('/tmp') == '/tmp'  #=> true
+  #   FSDS.new('/tmp') == '/tmp'  #=> true
   def ==(string)
     self.path == string
   end
   
   # Create a file or directory on the filesystem if it doesn't already exist and set permissions, owner,
-  # & group if specified. See FSO::new for full param options.  They type paramter is required and must be 
-  # one of: [:file, :dir].  Returns an FSO instance.  See also the shortcut methods: :mkdir & :touch
+  # & group if specified. See FSDS::new for full param options.  They type paramter is required and must be 
+  # one of: [:file, :dir].  Returns an FSDS instance.  See also the shortcut methods: :mkdir & :touch
   #
   #
   # Examples:
-  #   p=FSO.new  '/tmp/deleteme'        # this sets the path that is needed for the next command.
+  #   p=FSDS.new  '/tmp/deleteme'        # this sets the path that is needed for the next command.
   #   p.create! :file
   #   # OR
-  #   FSO.create! :file, '/tmp/deleteme', {:sudo => 'superSecretPassword'}
+  #   FSDS.create! :file, '/tmp/deleteme', {:sudo => 'superSecretPassword'}
   #   p.destroy!                        # cleanup sample file!
   def create!(type, pth=path, options={})
     options, pth = pth, options if Hash === pth   # Swap arguments if arguments are backwards
@@ -96,49 +96,49 @@ class FSO
 
   
   # Create a Directory on the filesystem if it doesn't already exist.  This is a shortcut to the :create! 
-  # method with specifying :dir.  Returns a FSO instance.  See also: create!
+  # method with specifying :dir.  Returns a FSDS instance.  See also: create!
   #
   # Examples:
-  #   p=FSO.new  '/tmp/deleteme'
+  #   p=FSDS.new  '/tmp/deleteme'
   #   p.mkdir
   #   # OR:
-  #   p = FSO.mkdir '/tmp/deleteme'
+  #   p = FSDS.mkdir '/tmp/deleteme'
   #   p.destroy!                      # cleanup test dir
   def mkdir(pth=path, options={})
     create! :dir, pth, options
   end
   
   # Create a File on the filesystem if it doesn't already exist.  This is a shortcut to the :create! 
-  # method with specifying :file.  Returns a FSO instance.  See also: create!
+  # method with specifying :file.  Returns a FSDS instance.  See also: create!
   #
   # Examples:
-  #   p=FSO.new  '/tmp/deleteme'
+  #   p=FSDS.new  '/tmp/deleteme'
   #   p.touch
   #   # OR:
-  #   p = FSO.touch '/tmp/deleteme'
+  #   p = FSDS.touch '/tmp/deleteme'
   #   p.destroy!                      # cleanup test file
   def touch(pth=path, options={})
     create! :file, pth, options
   end
   
   
-  # Get or set the owner properity of a FSO Ruby object.  This does not change or query anything in the filesystem.  
+  # Get or set the owner properity of a FSDS Ruby object.  This does not change or query anything in the filesystem.  
   # To make changes to the filesystem, call the :owner! method.
   # To query the filesystem call the :group? method.
   #
   # Examples:
-  #   FSO.mkdir('/tmp/testing.txt')
-  #   FSO.owner 'joshaven'      #=> 'joshaven'
-  #   FSO.owner                 #=> 'joshaven' 
+  #   FSDS.mkdir('/tmp/testing.txt')
+  #   FSDS.owner 'joshaven'      #=> 'joshaven'
+  #   FSDS.owner                 #=> 'joshaven' 
   def owner(arg=nil)
     arg.nil? ? @owner : @owner = arg.to_s
   end
   alias_method :owner=, :owner
   
-  # Returns the current owner of the FSO or nil if it doesn't exitst.  This reads from the filesystem
+  # Returns the current owner of the FSDS or nil if it doesn't exitst.  This reads from the filesystem
   #
   # Examples:
-  #   p = FSO.mkdir '/tmp/my_test'   # => #<FSO:0x10062dfd0 @permissions=nil, @path="/tmp/my_test", @group=nil>
+  #   p = FSDS.mkdir '/tmp/my_test'   # => #<FSDS:0x10062dfd0 @permissions=nil, @path="/tmp/my_test", @group=nil>
   #   p.owner?                        # => "joshaven"  # or what ever your username is
   #   p.destroy!                      # => true        # just a bit of cleanup
   def owner?
@@ -146,14 +146,14 @@ class FSO
     proprieties[:owner]
   end
   
-  # Sets the current owner of the FSO.  Returns true or false.
+  # Sets the current owner of the FSDS.  Returns true or false.
   #
   # options: options must be a hash with two optional keys:  :sudo & :arguments
   # * sudo: (optional) your sudo password
   # * arguments: (optional) string containing valid chown options, ie: '-R' for recursive
   #
   # Examples:
-  #   p = FSO.mkdir '/tmp/my_test'  #
+  #   p = FSDS.mkdir '/tmp/my_test'  #
   #   p.owner 'root'
   #   # The following will issue the command `sudo chown -R root /tmp/my_test` and supplies the password
   #   p.owner! {:sudo => 'mySecretPassword', :arguments => '-R'}  
@@ -169,7 +169,7 @@ class FSO
   end
   
   
-  # Get or set the group properity of a FSO Ruby object.  This does not change or query anything in the filesystem.  
+  # Get or set the group properity of a FSDS Ruby object.  This does not change or query anything in the filesystem.  
   # To make changes to the filesystem, call the :owner! method.
   # To query the filesystem call the :group? method.
   def group(arg=nil)
@@ -181,12 +181,12 @@ class FSO
   # Returns the current group of the filesystem object or nil if it doesn't exitst.  This reads from the filesystem.
   #
   # Examples:
-  #   FSO.group? '/tmp'    #=> "wheel"
+  #   FSDS.group? '/tmp'    #=> "wheel"
   def group?
     proprieties[:group]
   end
 
-  # Sets the current group of the FSO.  Returns true or false.
+  # Sets the current group of the FSDS.  Returns true or false.
   #
   # grp_name: optional group name as a string.  If not provided, the group setter will use the value of the @group 
   # instance variable.
@@ -196,7 +196,7 @@ class FSO
   # - arguments: (optional) string containing valid chown options, ie: '-R' for recursive
   #
   # Examples:
-  #   p = FSO.mkdir '/tmp/my_test'
+  #   p = FSDS.mkdir '/tmp/my_test'
   #   p.owner 'root'
   #   # The following will issue the command `sudo chown -R root /tmp/my_test` and supplies the password
   #   p.owner! {:sudo => 'mySecretPassword', :arguments => '-R'}
@@ -217,7 +217,7 @@ class FSO
     end
   end
 
-  # Get or set the permissions properity of a FSO Ruby object.  This does not change or query anything in the filesystem.  
+  # Get or set the permissions properity of a FSDS Ruby object.  This does not change or query anything in the filesystem.  
   # To make changes to the filesystem, call the :permissions! method.
   # To query the filesystem call the :permissions? method.
   def permissions(arg=nil)
@@ -228,12 +228,12 @@ class FSO
   # Returns an integer representation of the permissions or nil if SFO doesn't exist.
   #
   # Example: 
-  #   FSO('/tmp').permissions?   # => 777
+  #   FSDS('/tmp').permissions?   # => 777
   def permissions?
     proprieties[:permissions]
   end
   
-  # Sets the FSO permissions if the FSO & permissions are valid.
+  # Sets the FSDS permissions if the FSDS & permissions are valid.
   # Returns false if given invalid permissions or directory is not in existence.
   # The Permissions can be set via arguments or via the :permissions method.
   #
@@ -259,25 +259,25 @@ class FSO
     end
   end
   
-  # Returns true or false.  Shortcut method to: FSO.new('/tmp').type != nil
+  # Returns true or false.  Shortcut method to: FSDS.new('/tmp').type != nil
   #
   # Examples:
-  #   FSO.exists?("/tmp")           #=> true
+  #   FSDS.exists?("/tmp")           #=> true
   def exists?
     self.type != nil
   end
   
-  # Removes FSO from filesystem, returning true if successful or false if unsuccessful.
+  # Removes FSDS from filesystem, returning true if successful or false if unsuccessful.
   #
   # Options:
   # * options may contain a hash with a sudo key containing a password: p.destroy!({:sudo => 'superSecret'})
   #
   # Example:
-  # p = FSO.mkdir('/tmp/text')
+  # p = FSDS.mkdir('/tmp/text')
   # p.destroy!                          # => true
-  # p.destroy!                          # => false    # its already gone, but the FSO object remains.
-  # p.destroy! :sudo => 'superSecret'   # => false    # its already gone, but the FSO object remains.
-  # FSO.destroy!('/tmp/not_here_123')  # => false    # By the way, the method missing magic works here to.
+  # p.destroy!                          # => false    # its already gone, but the FSDS object remains.
+  # p.destroy! :sudo => 'superSecret'   # => false    # its already gone, but the FSDS object remains.
+  # FSDS.destroy!('/tmp/not_here_123')  # => false    # By the way, the method missing magic works here to.
   def destroy!(options={})
     begin
       if options.has_key? :sudo
@@ -290,7 +290,7 @@ class FSO
     end
   end
 
-  # Returns a hash of information on the FSO.  This method is dependent upon a Posix environment!
+  # Returns a hash of information on the FSDS.  This method is dependent upon a Posix environment!
   #
   # Keys:
   # :name, :permissions, :owner, :group, :size, :modified, :mkdird, :subordinates  (subordinates are number of items contained)
@@ -324,10 +324,10 @@ class FSO
         File.open(path, 'a') { |f| f.print data }
         self
       rescue
-        raise FSO::IOError
+        raise FSDS::IOError
       end
     else
-      raise FSO::IOError
+      raise FSDS::IOError
     end
   end
   alias_method :<<, :concat
@@ -335,7 +335,7 @@ class FSO
   # Writes a string with an appended newline to to a file.    
   #
   # Example:
-  #   f = FSO.new 'path/to/file'
+  #   f = FSDS.new 'path/to/file'
   #   f.read   #=> "Line: 0\nLine: 1\n"
   def writeln(data)
     concat "#{data.chomp}\n"
@@ -344,7 +344,7 @@ class FSO
   # Returns the entire file as a string.
   #
   # Example:
-  #   f = FSO.new 'path/to/file'
+  #   f = FSDS.new 'path/to/file'
   #   f.read   #=> "Line: 0\nLine: 1\n"
   def read
     File.read(path) # documented in IO class
@@ -354,7 +354,7 @@ class FSO
   # the last line would be 9. Represented as a range this would be: file.readln(0..9)
   # 
   # Examples:
-  #   f = FSO.new 'path/to/file'
+  #   f = FSDS.new 'path/to/file'
   #   f.readln 0   #=> "Line: 0"
   #   f.readln(0..2)   #=> ["Line: 0", "Line: 1", "Line: 2"]
   def readln(line)
@@ -370,15 +370,15 @@ class FSO
     path
   end
 
-  # Cute little trick that mkdirs a new instance of FSO given the args and sends it the requested method...
+  # Cute little trick that mkdirs a new instance of FSDS given the args and sends it the requested method...
   # 
   # Example:
-  #   FSO.mkdir('/tmp/test', 755)  # calls => FSO.new('/tmp/test', 755).mkdir
+  #   FSDS.mkdir('/tmp/test', 755)  # calls => FSDS.new('/tmp/test', 755).mkdir
   def self.method_missing(mth, *args)
     self.new(*args).send(mth)
   end
 
-  # This breaks out of the FSO wrapper and allows access to the standard objects: File, Dir
+  # This breaks out of the FSDS wrapper and allows access to the standard objects: File, Dir
   def method_missing(mth, *args)
     # this assumes that a path is the standard input... this is not very protected... need to check Dile & Dir API's
     args = [path] if args.empty?
@@ -407,7 +407,7 @@ end
 # make the :new method optional...  appends the Kernel object.
 
 module Kernel
-  def FSO(*params)
-    ::FSO.new *params
+  def FSDS(*params)
+    ::FSDS.new *params
   end
 end

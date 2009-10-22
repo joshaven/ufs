@@ -1,6 +1,32 @@
-= fads
+= fsds - File System as a Data Store
 
-Description goes here.
+== Notice
+This project is under development.  Your welcome to use it but it is NOT
+complete and the API is NOT stable.
+
+== Description
+File System as a Data Store.  The goal of this gem is to make using your file
+system, or other data storage that can work like a file system, for document
+storage in a friendly way.  This gem was tested & documented from the ground up.
+To begin with, I intend to support the local file systems as well as Amazon S3,
+interchangeably.
+
+== Examples
+  # Touching on directories & text files...
+  dir = FSDS.mkdir '/tmp/testing_deleteme'
+  f = FSDS.touch "#{dir}/deleteme"
+  f << "Hello"
+  f.read                      #=> "Hello"
+  f << " world"
+  f.writeln 'another line'
+  f.writeln 'more stuff'
+  f.read                      #=> "Hello world\nanother line\nmore stuff\n"
+  f.readln 0                  #=> "Hello world"
+  f.readln 0..1               #=> ["Hello world", "another line"]
+  dir.destroy!
+  dir.exists?                 #=> false
+
+
 
 == Note on Patches/Pull Requests
  

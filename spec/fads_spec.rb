@@ -1,6 +1,6 @@
 require File.expand_path(File.dirname(__FILE__) + '/spec_helper')
 
-describe 'FSO' do
+describe 'FSDS' do
   before :all do
     # Enable the following and set your password to test things that require sudo
     # @sudo_passwd = 'SuperSecret'
@@ -8,70 +8,70 @@ describe 'FSO' do
   end
 
   before :each do
-    FSO.destroy! @test_path
+    FSDS.destroy! @test_path
   end
   
   # it 'Reminder to remove sudo password from setup block' {pending{fail}}
   
   it 'should instantize' do
-    FSO.new('/tmp').should === Dir
-    FSO('/tmp').should === Dir  # Wow, nice loverly thing!
+    FSDS.new('/tmp').should === Dir
+    FSDS('/tmp').should === Dir  # Wow, nice loverly thing!
                                 # Thanks to the ability to extend the Kernel without a conflict in naming with constants!
   end
   
   it 'should answer exists?' do
     # test dir
-    FSO.exists?('/tmp/').should be_true
-    FSO.exists?('/tmp/not/here/ever/12345678900987654321/').should be_false
-    FSO.new('/tmp').exists?.should be_true
-    FSO.new('/tmp/not/here/ever/12345678900987654321/').exists?.should be_false
+    FSDS.exists?('/tmp/').should be_true
+    FSDS.exists?('/tmp/not/here/ever/12345678900987654321/').should be_false
+    FSDS.new('/tmp').exists?.should be_true
+    FSDS.new('/tmp/not/here/ever/12345678900987654321/').exists?.should be_false
     # test file
-    FSO.touch @test_path
-    FSO.exists?(@test_path).should be_true
+    FSDS.touch @test_path
+    FSDS.exists?(@test_path).should be_true
   end
   
   it 'should handle :mkdir and :destroy for files or folders' do
-    FSO.exists?(@test_path).should be_false
-    p = FSO.mkdir @test_path   # creates a dir
+    FSDS.exists?(@test_path).should be_false
+    p = FSDS.mkdir @test_path   # creates a dir
     p.exists?.should be_true
-    FSO.mkdir(@test_path).should be_true   # dir already exists so mkdir is true
+    FSDS.mkdir(@test_path).should be_true   # dir already exists so mkdir is true
     p.destroy!
     p.exists?.should be_false
   end
   
   it 'should handle :touch' do
-    f = FSO.touch @test_path
+    f = FSDS.touch @test_path
     f.should === File
-    FSO.touch(@test_path).should be_true  # You should be able to touch existing files...
+    FSDS.touch(@test_path).should be_true  # You should be able to touch existing files...
     f.destroy!
     
-    d = FSO.mkdir @test_path
-    FSO.touch(@test_path).should be_false
+    d = FSDS.mkdir @test_path
+    FSDS.touch(@test_path).should be_false
   end
   
   it "should respond to proprieties" do
     # for dir
-    d = FSO.new '/tmp'
+    d = FSDS.new '/tmp'
     d.proprieties[:group].should =~ /wheel|root/
     # for file
-    f = FSO.touch @test_path
+    f = FSDS.touch @test_path
     f.proprieties[:group].should =~ /wheel|root/
   end
   
   it 'should handle :permissions permissions? permissions!' do
-    passwd = FSO.new('/etc/passwd')
+    passwd = FSDS.new('/etc/passwd')
     passwd.permissions?.should === 644
     
     # for dir
-    d = FSO.new '/tmp'
+    d = FSDS.new '/tmp'
     d.permissions.should be_nil
     d.permissions?.should === 755
     Integer.should === d.permissions?
-    d = FSO.new '/tmp/not_real/'
+    d = FSDS.new '/tmp/not_real/'
     d.permissions?.should be_nil
     
     # set permissions
-    d=FSO.new('~/delete_me_dir')
+    d=FSDS.new('~/delete_me_dir')
     d.destroy!
     d.mkdir
     d.permissions?.should === 755
@@ -84,18 +84,19 @@ describe 'FSO' do
     d.destroy!
     
     # for file
-    f=FSO.touch '~/deleteme'
+    f=FSDS.touch '~/deleteme'
     Integer.should === f.permissions?
     f.permissions?.should_not == 777
     f.permissions!(777).should be_true
     f.permissions?.should == 777
+    f.destroy!
   end
   
   it 'should handle :owner, :owner?, & :owner!' do
     # for dir
     my_user_name = `whoami`.chomp
 
-    d = FSO.new @test_path
+    d = FSDS.new @test_path
     d.destroy!
     d.owner?.should be_nil
     d.mkdir
@@ -118,7 +119,7 @@ describe 'FSO' do
     end
     
     # for file
-    f = FSO.touch @test_path
+    f = FSDS.touch @test_path
     f.owner?.should == my_user_name
     f.destroy!
     if @sudo_password
@@ -131,7 +132,7 @@ describe 'FSO' do
   
   it "should handle :group, :group?, & :group!" do
     # for dir
-    d = FSO.new @test_path
+    d = FSDS.new @test_path
     d.destroy! # Ensure we have a clean slate!
     d.mkdir
     d.group.should be_nil
@@ -140,14 +141,14 @@ describe 'FSO' do
     d.group?.should == 'staff'
     # the following cannot be done without superuser, but it works when provided a password
     if @sudo_passwd
-      d.group = FSO.group?('/tmp')
+      d.group = FSDS.group?('/tmp')
       d.group!('everyone', {:sudo => @sudo_passwd}).should be_true
       d.group?.should == 'everyone'
     end
     d.destroy!.should be_true
     
     # for File
-    f = FSO.new @test_path
+    f = FSDS.new @test_path
     f.destroy!
     f.touch
     f.group?.should =~ /wheel|root/
@@ -157,30 +158,30 @@ describe 'FSO' do
   end
   
   it 'should inherit permissions' do
-    d = FSO.mkdir '/tmp/deleteme/'
-    d.group?.should == FSO.group?('/tmp')
+    d = FSDS.mkdir '/tmp/deleteme/'
+    d.group?.should == FSDS.group?('/tmp')
     d.destroy!
     
-    f = FSO.touch @test_path
-    f.group?.should == FSO.group?('/tmp')
+    f = FSDS.touch @test_path
+    f.group?.should == FSDS.group?('/tmp')
   end
   
   it 'should know to_s' do
-    p=FSO.new @test_path
+    p=FSDS.new @test_path
     p.to_s.should == @test_path
   end  
   
   it 'should be able to pass missing methods to the file & dir objects' do
-    f = FSO.touch @test_path
+    f = FSDS.touch @test_path
     f.executable?.should == false  # should turn into:  File.executable?(file_name) => true or false
     pending do  
-      # need to double check the method_missing instance method of FSO... some asumptions are being made
+      # need to double check the method_missing instance method of FSDS... some asumptions are being made
       fail
     end
   end
   
   it 'should be able to read & write files' do
-    f = FSO.touch @test_path
+    f = FSDS.touch @test_path
     f.concat 'First'
     f << ' test!'
     f.read.should == "First test!"
@@ -189,18 +190,18 @@ describe 'FSO' do
   end
   
   it 'should return self when writing to a file or raise an error' do
-    lambda { FSO(@test_path) << 'hello' }.should raise_error(FSO::IOError)
+    lambda { FSDS(@test_path) << 'hello' }.should raise_error(FSDS::IOError)
   end
   
   it 'should write by line' do
-    f = FSO.touch @test_path
+    f = FSDS.touch @test_path
     f.writeln "First"
     f.writeln("Second").should be_true
     f.read.should == "First\nSecond\n"
   end
   
   it 'should read lines by number' do
-    f = FSO.touch @test_path
+    f = FSDS.touch @test_path
     (0..4).to_a.each {|i| f.writeln "Line: #{i}"}
     f.readln(0).should == "Line: 0"
     f.readln(4).should == "Line: 4"
@@ -209,7 +210,7 @@ describe 'FSO' do
   end
   
   it 'should read lines by range' do
-    f = FSO.touch @test_path
+    f = FSDS.touch @test_path
     (0..3).to_a.each {|i| f.writeln "Line: #{i}"}
     f.readln((0..2)).should == ["Line: 0", "Line: 1", "Line: 2"]
     # Should not go beyond the limits of the file... the following is equal to read: 
@@ -217,7 +218,7 @@ describe 'FSO' do
     f.readln((2..100)).should == ["Line: 2", "Line: 3"]
   end
   
-  # it 'should have a FSO::File class' do
-  #   FSO::File.greet.should == "Hello from FSO::File"
+  # it 'should have a FSDS::File class' do
+  #   FSDS::File.greet.should == "Hello from FSDS::File"
   # end
 end
