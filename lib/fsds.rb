@@ -1,7 +1,15 @@
 class FSDS
-  # require 'adapters/fs/file'
+  # Require all adapters  requireing any: ./lib/adapters/#{adapter_name}/#{adapter_name}.rb
+  # ::Dir.glob('lib/adapters/*.rb').each {|adapter_file| require adapter_file }
+  Dir.glob(File.expand_path(File.dirname(__FILE__))+'/adapters/*.rb').each {|adapter_file| require adapter_file }
   
   FSDS::IOError = "IOError: Cannot communicate with file."
+
+#^^^^^^^^^^^^^^^ Above this line stays
+
+
+
+
   attr_accessor :path, :permissions, :owner, :group
   # Retuns a FSDS (File System Object).  The path, permissions, ownership & group can be 
   # specified as attributes. The filesystem is not touched by this method.  The methods that 
@@ -21,12 +29,15 @@ class FSDS
     self.group       = grp unless grp.nil?
   end
 
-  # Return the type of the FSDS.  The answer will be one of: File, Dir, or nil
-  def type
-    # return File if File.file?(path || '')
-    # return Dir if File.directory?(path || '')
-    # nil
-    File.file?(path || '') ? File : (File.directory?(path || '') ? Dir : nil)
+  # Return or set the type of the FSDS.  The answer will be one of: the adapter types, or nil
+  def type(klass = nil)
+    if klass.nil?
+      @type = File.file?(path || '') ? File : (File.directory?(path || '') ? Dir : nil)
+    elsif Class === klass.class
+      @type = klass
+    else
+      nil
+    end
   end
 
   # Shortcut method to finding the type of a filesystem object without instantizing an FSDS.
@@ -366,6 +377,7 @@ class FSDS
     end
   end
 
+  
   def to_s
     path
   end
@@ -401,6 +413,9 @@ private
     permissions_string.slice(1..9).gsub('--x','1').gsub('-w-','2').gsub('-rx','3').gsub('r--','4').gsub('r-x','5').gsub('rw-','6').gsub('rwx','7').to_i
   end
 end
+
+#>>>>>>>>>>>>>>>> Beginning of RemoveMe
+#<<<<<<<<<<<<<<<< End of RemoveMe
 
 
 
