@@ -18,6 +18,10 @@ describe 'FSDS::FS::File' do
     FSDS::FS::File.should === FSDS::FS::File.new
   end
   
+  it 'should instantize when given an instance' do
+    FSDS::FS::File.new(@file).path.should == @file.path
+  end
+  
   it 'should be able to touch' do
     FSDS::FS::File.should === FSDS::FS::File.touch(@fn)
     FSDS::FS::File.should === @file.touch
@@ -100,6 +104,13 @@ describe 'FSDS::FS::File' do
     @file.writeln "First"
     @file.writeln("Second").should be_true
     @file.read.should == "First\nSecond\n"
+    
+    # should also make sure that writeln doesn't append the prior line...
+    @file.destroy!
+    @file.touch
+    @file << 'First'
+    @file.writeln("Second")
+    @file.read.should == "First\nSecond\n"
   end
   
   it 'should read lines by number' do
@@ -120,12 +131,43 @@ describe 'FSDS::FS::File' do
     @file.readln((2..100)).should == ["Line: 2", "Line: 3"]
   end
   
+  it 'should :read_by_byte start, finish' do
+    @file.touch
+    @file << '0123456789'
+    @file.read_by_bytes(0).should == '0123456789'
+    @file.read_by_bytes(1).should == '123456789'
+    @file.read_by_bytes(-2).should == '89'
+    @file.read_by_bytes(-3, 1).should == '7'
+    @file.destroy!
+    @file.touch
+    @file << "0123456789\n123\n"
+    @file.read_by_bytes(-1).should == "\n"
+    @file.read_by_bytes(-4).should == "123\n"
+    
+    # test beyond file limits error handeling
+    lambda {@file.read_by_bytes(16)}.should raise_error
+    lambda {@file.read_by_bytes(-16)}.should raise_error
+    lambda {@file.read_by_bytes(0, 100)}.should_not raise_error
+  end
+  
   it 'should be able to break out of the FSDS::FS::File proxy and access ::File methods' do
-    pending {
-      @file.touch
-      @file.executable?.should be_false
-      @file.permissions! 777
-      @file.executable?.should be_true
-    }
+    # pending {
+    #   @file.touch
+    #   @file.executable?.should be_false
+    #   @file.permissions! 777
+    #   @file.executable?.should be_true
+    # }
+    
+    # probable solution the following duplicates makes a proxy method to File...:
+    # Soure: http://blog.jayfields.com/2008/02/ruby-replace-methodmissing-with-dynamic.html
+    # ::File.public_methods(false).each do |meth|
+    #   (class << self; self; end).class_eval do
+    #     define_method meth do |*args|
+    #       ::File.send meth, *args
+    #     end
+    #   end
+    # end
+    
+puts    FSDS::FS::File.join('tmp')#.should == ::File.join('tmp', 'test')
   end
 end

@@ -3,7 +3,9 @@ class FSDS
   # ::Dir.glob('lib/adapters/*.rb').each {|adapter_file| require adapter_file }
   Dir.glob(File.expand_path(File.dirname(__FILE__))+'/adapters/*.rb').each {|adapter_file| require adapter_file }
   
-  FSDS::IOError = "IOError: Cannot communicate with file."
+  FSDS::IOError = "IOError: Cannot communicate with file or directory."
+  FSDS::ReadError = "ReadError: Cannot read from file or directory."
+  FSDS::WriteError = "WriteError: Cannot write to file or directory."
 
 #^^^^^^^^^^^^^^^ Above this line stays
 

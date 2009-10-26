@@ -40,15 +40,15 @@ class FSDS::FS::Dir < FSDS::FS
     
     cmd_prefix = options.has_key?(:sudo) ? "echo #{options[:sudo]}| sudo -S " : ''
     
-    begin
-      raise("Could not make dir: #{path}") unless system_to_boolean("#{cmd_prefix} mkdir #{options[:arguments]} #{path}")
-      # TODO: I think this needs to revert to the above method, need to test making a dir that requires sudo
-      # ::Dir::mkdir(path)
-    rescue
-      raise FSDS::IOError
-    end unless ::File.directory? path
+    unless exists? # attempt to make directory unless it already exists.
+      begin
+        raise FSDS::WriteError unless system_to_boolean("#{cmd_prefix} mkdir #{options[:arguments]} #{path}")
+      rescue
+        raise FSDS::WriteError
+      end 
+    end
     
-    # sudo_options = options.has_key?(:sudo) ? {:sudo => options[:sudo]} : {}
+    sudo_options = options.has_key?(:sudo) ? {:sudo => options[:sudo]} : {}
     owner! sudo_options
     group! sudo_options
     permissions! sudo_options
@@ -56,6 +56,72 @@ class FSDS::FS::Dir < FSDS::FS
     return self
   end
   alias_method :mkdir, :create!
-
   
+  # Shortcut method to mkdir while specifying the argument '-p'.  This creates a directory and all needed
+  # directories inbetween.
+  #
+  # Example:
+  #   FSDS::Dir.mkdir! '/tmp/new_dir/my_dir'   #=> true    # this makes the new_dir & the my_dir
+  def mkdir!(pth=path, options={})
+    create! pth, options.merge({:arguments=>'-p'})
+    # File.makedirs path  # this would be great except that it doesn't support sudo
+  end
+  
+  # Returns true or false.  Shortcut method to: FSDS.new('/tmp').type != nil
+  #
+  # Examples:
+  #   FSDS.exists?("/tmp")           #=> true
+  def exists?
+    ::File.directory? self.path
+  end
+  
+  # Returns and array of path strings contained withing the current directory.  There is no distinction between File & Dir.
+  # This could easily be modified to return File & Dir objects, which would make the data distinct.
+  #
+  # Example:
+  #   d = FSDS::FS::Dir '/tmp'
+  #   d.to_a                      #=> ["/tmp/some_file.txt", "/tmp/some_dir"]
+  def to_a
+    ::Dir.glob(path + '/*')
+    # Uncomment the following to return File & Dir objects instead of Strings.
+    # ::Dir.glob(path + '/*').collect {|pth| FSDS::FS.new pth}
+  end
+  
+
+  # Move files or directories to directory using :<< method
+  def <<(pth)
+    # FSDS::FS.new(pth).move path
+    pth.move(path)
+
+    self.to_a
+  end
+  
+  
+  # Removes FSDS from filesystem, returning true if successful or false if unsuccessful.
+  #
+  # Options:
+  # * options may contain a hash with a sudo key containing a password: p.destroy!({:sudo => 'superSecret'})
+  #
+  # Example:
+  # p = FSDS.mkdir('/tmp/deleteme')                   # This assumes that you have set FSDS::default_type
+  # p.destroy!                          # => true     # Bam! Its gone... for ever...
+  # p.destroy!                          # => false    # Its already gone, but the FSDS object remains.
+  # p.destroy! :sudo => 'superSecret'   # => false    # This does delete as super user, but its still not there
+  # FSDS.destroy!('/tmp/deleteme/nota') # => false    # This assumes that you have set FSDS::default_type
+  # def destroy!(options={})
+  #   begin # The :: Dir.delete method returns 0 when the 
+  #     ::Dir.delete(path) == 0 ? true : false
+  #   rescue # The :: Dir.delete method raises an error if dir doesn't exist
+  #     false
+  #   end
+  #   # begin
+  #   #   if options.has_key? :sudo
+  #   #     system_to_boolean "echo #{options[:sudo]}| sudo -S rm -r #{path}"
+  #   #   else
+  #   #     system_to_boolean "rm -r #{path}"
+  #   #   end
+  #   # rescue
+  #   #   false
+  #   # end
+  # end  
 end

@@ -30,7 +30,7 @@ class FSDS::FS::File < FSDS::FS
   #   # If you need root access then send it a sudo:
   #   FSDS.create! :file, '/etc/deleteme', {:sudo => 'superSecretPassword'}
   def create!(pth=path, options={})
-    #####
+    ##### TODO:
     # Need to write this lines support code:
     #   pth,options = sort_path_and_options(pth, options)
     #####
@@ -48,7 +48,7 @@ class FSDS::FS::File < FSDS::FS
     # raise("Could not touch file: #{path}") unless system_to_boolean("#{cmd_prefix} touch #{options[:arguments]} #{path}")
     self.concat! ''
     
-    # sudo_options = options.has_key?(:sudo) ? {:sudo => options[:sudo]} : {}
+    sudo_options = options.has_key?(:sudo) ? {:sudo => options[:sudo]} : {}
     owner! sudo_options
     group! sudo_options
     permissions! sudo_options
@@ -65,29 +65,17 @@ class FSDS::FS::File < FSDS::FS
     ::File.file? path
   end
   
-  
-  # Removes FSDS from filesystem, returning true if successful or false if unsuccessful.
-  #
-  # Options:
-  # * options may contain a hash with a sudo key containing a password: p.destroy!({:sudo => 'superSecret'})
+  # Returns the file size of the file in bytes.  This method is aliased as bytes
   #
   # Example:
-  # p = FSDS.touch('/tmp/deleteme')
-  # p.destroy!                          # => true
-  # p.destroy!                          # => false    # its already gone, but the FSDS object remains.
-  # p.destroy! :sudo => 'superSecret'   # => false    # This does delete as super user, but its still not there
-  # FSDS.destroy!('/tmp/not_here_123')  # => false    # This assumes that you have set FSDS::default_type
-  def destroy!(options={})
-    begin
-      if options.has_key? :sudo
-        system_to_boolean "echo #{options[:sudo]}| sudo -S rm #{path}"
-      else
-        system_to_boolean "rm #{path}"
-      end
-    rescue
-      false
-    end
+  #   f = FSDS::FS::File.touch '/tmp/deleteme.txt'
+  #   f << "123\n"
+  #   f.size        # => 4   # Three numbers and a newline character
+  #   f.bytes       # => 4   # Three numbers and a newline character
+  def size
+    exists? ? ::File.size(path) : nil
   end
+  alias_method :bytes, :size
   
   # Appends to a file or raises FSDS::IOError.  This method does not do anything with new line characters.  If you
   # want to write a line of text see the :writeln method.  This method will railse FSDS::IOError if fild doesn't exist
@@ -104,23 +92,51 @@ class FSDS::FS::File < FSDS::FS
   end
   def concat!(data)
     begin
-      ::File.open(path, 'a') { |f| f.print data }
+      ::File.open(path, 'a') { |f| f.print data.to_s }
       self
     rescue
-      raise FSDS::IOError
+      raise FSDS::WriteError
     end
   end
   alias_method :<<, :concat
+
+  # Return the content of a file from given start byte through the finish byte.  If finish byte is not given then the end
+  # of the file is assumed.  
+  #
+  # Examples:
+  #   file = File::FS::File.touch '/tmp/deleteme.txt'
+  #   file << '0123456789abcdefghij'
+  #   file.read_by_bytes(0,10)    #=> "0123456789" # Returns the 1st byte for 10 consecutive byte.
+  #   file.read_by_bytes(10,10)   #=> "abcdefghij" # Returns from the 10th byte for 10 consecutive bytes.
+  #   file.read_by_bytes(-10,10)  #=> "abcdefghij" # Returns, the 10th from last byte for 10 consecutive byptes.
+  #   file.read_by_bytes(-10)     #=> "abcdefghij" # Returns, the 10th from last byte through the end of the file.
+  #   file << "\n0123456789\n"
+  #   file.read_by_bytes(-12,10)  # => "\n012345678"
+  #   file.read_by_bytes(-1)      # => "\n"
+  #   file.read_by_bytes(1000, 1) # => RuntimeError: start byte is beyond the size of the file
+  def read_by_bytes(start, finish = nil)
+    raise 'start must be an Integer' unless Integer === start
+    raise 'finish must be an Integer or nil' unless Integer === finish || NilClass === finish
+
+    f = ::File.new(path)
+    size = ::File.size(path)
+    finish = size if finish.nil? || finish > size
+    raise 'start byte is beyond the size of the file' if start.abs > size
+    f.seek(start, ((start < 0) ? IO::SEEK_END : IO::SEEK_SET) )
+    f.read(finish)
+  end
   
   # Writes a string with an appended newline to to a file.    
   #
   # Example:
   #   f = FSDS.new 'path/to/file'
   #   f.read   #=> "Line: 0\nLine: 1\n"
-  #
-  # FIXME:  should be sure prior char is a newline or prepend a newline & end with a newline
   def writeln(data)
-    concat "#{data.chomp}\n"
+    if size > 0
+      self.concat "#{$/ unless read_by_bytes(-1) == $/}#{data.to_s.chomp}#{$/}"
+    else
+      self.concat "#{data.to_s.chomp}#{$/}"
+    end
   end
 
   # Returns the entire file as a string.
@@ -129,7 +145,11 @@ class FSDS::FS::File < FSDS::FS
   #   f = FSDS.new 'path/to/file'
   #   f.read   #=> "Line: 0\nLine: 1\n"
   def read
-    ::File.read(path) # documented in IO class
+    begin
+      ::File.read(path) # documented in IO class
+    rescue
+      raise FSDS::ReadError 
+    end
   end
 
   # Returns a line as a String or a range of lines as an Array.  Given a 10 line file, the first line would be 0 and 
@@ -140,13 +160,52 @@ class FSDS::FS::File < FSDS::FS
   #   f.readln 0   #=> "Line: 0"
   #   f.readln(0..2)   #=> ["Line: 0", "Line: 1", "Line: 2"]
   def readln(line)
-    if Fixnum === line
-      str = ::File.readlines(path)[line]
-      String === str ? str.chomp : str
-    elsif Range === line
-      ::File.readlines(path)[line.first, line.last+1].collect {|str| str.chomp if String === str}
+    begin
+      if Fixnum === line
+        str = ::File.readlines(path)[line]
+        String === str ? str.chomp : str
+      elsif Range === line
+        ::File.readlines(path)[line.first, line.last+1].collect {|str| str.chomp if String === str}
+      end
+    rescue
+      raise FSDS::ReadError
     end
   end
+
+  def method_missing(mth, *args)
+    # FSDS::FS.constants.each {|const| puts const.methods.include? 'touch'}
+    puts "got to Method Missing!  mth: #{mth}, args: #{args.inspect}  BLANK ARGS?: #{args.empty?}"
+    begin
+      # these need:  (path) or (path, *args)
+      if [:atime, :basename, :blockdev?, :chardev?, :catname, :compare, :copy, :ctime, :delete, :directory?, :dirname, 
+          :executable?, :executable_real?, :exist?, :exists?, :expand_path, :extname, :file?, :ftype, :grpowned?, 
+          :identical?, :install, :link, :lstat, :makedirs, :move, :mtime, :new, :owned?, :pipe?, :readable?, :readable_real, 
+          :readlink, :rename, :safe_unlink, :setgid?, :syscopy, :size, :socket?, :split, :stat, :sticky?, :symlink, 
+          :symlink?, :truncate, :unlink, :unlink, :writable?, :writable_real?, :zero?].include?(mth)
+        ::File.send(*([mth, path, *args].compact)) if ::File.methods.include?(mth.to_s)
+        
+      elsif [:chown, :lchmod, :utime].include?(mth) # these need: (*args, path)
+        ::File.send(*([mth, [*args], path].compact.flatten)) if ::File.methods.include?(mth.to_s)
+        
+      # these need:  ie: (arg1, path, *arg)
+      elsif [:fnmatch, :fnmatch?].include? mth
+        ::File.send(mth, *([args.shift, path, *args].compact)) if ::File.methods.include?(mth.to_s)
+        
+      # These don't need a path
+      elsif [:join, :umask].include? mth
+        ::File.send( *([mth, *args].compact) )
+        
+      # These are instance methods and thus don't need the path but must work on a ::File.new(path) object
+      # these are at the end of the conditionals so duplicates with above will not be used.
+      elsif [:atime, :chmod, :chown, :ctime, :flock, :lstat, :mtime, :chmod, :path, :truncate]
+        ::File.new(path).send(mth, *args)
+        
+      end
+    rescue
+      FSDS::IOError
+    end
+  end
+
 end
 
 # # This breaks out of the FSDS wrapper and allows access to the standard objects: File, Dir

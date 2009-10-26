@@ -5,16 +5,27 @@ class FSDS::FS
   # Retuns a FSDS adapter instance (File System Object).  The path, permissions, ownership & group can be 
   # specified as attributes. The filesystem is not touched by this method.  The methods that 
   # make changes to the filesystem are generally ending with an exclamation point (!) and the 
-  # methods that read from the filesystem are generally ending with a question mark (?).
+  # methods that read from the filesystem are generally ending with a question mark (?).  If an instance of FSDS::FS
+  # is given as the path then that instance is returned.
   #
   # Examples:
-  #   FSDS.new '/tmp/test'
-  #   FSDS.new '/tmp/test', 755
-  #   FSDS.new '/tmp/test', 755, 'joshaven'
-  #   FSDS.new '/tmp/test', 755, 'joshaven', 'staff'
-  #   FSDS.new '/tmp/test', nil, 'joshaven'     # The attributes are ordered, however they are ignored if nil.
-  def initialize(dir=nil, priv=nil, own=nil, grp=nil)
-    self.path        = ::File.expand_path(dir) unless dir.nil?
+  #   FSDS::FS::Dir.new '/tmp/test'
+  #   FSDS::FS::Dir.new '/tmp/test', 755
+  #   FSDS::FS::Dir.new '/tmp/test', 755, 'joshaven'
+  #   FSDS::FS::Dir.new '/tmp/test', 755, 'joshaven', 'staff'
+  #   FSDS::FS::Dir.new '/tmp/test', nil, 'joshaven'          # The attributes are ordered, however they are ignored if nil.
+  #
+  #   dir = FSDS::FS::Dir.new '/tmp/test'
+  #   FSDS::FS::Dir.new(dir).path == dir.path                 #=> true
+  def initialize(pth=nil, priv=nil, own=nil, grp=nil)
+    # duplicat instance if initilize is called with an instance as the first argument
+    if FSDS::FS::File === pth || FSDS::FS::Dir === pth
+      priv  = pth.permissions
+      own   = pth.owner
+      grp   = pth.group
+      pth   = pth.path
+    end
+    self.path        = ::File.expand_path(pth) unless pth.nil?
     self.permissions = priv unless priv.nil?
     self.owner       = own unless own.nil?
     self.group       = grp unless grp.nil?
@@ -260,17 +271,67 @@ class FSDS::FS
     end
   end
   
+  # Removes FSDS from filesystem, returning true if successful or false if unsuccessful.
+  #
+  # Options:
+  # * options may contain a hash with a sudo key containing a password: p.destroy!({:sudo => 'superSecret'})
+  #
+  # Example:
+  # p = FSDS.touch('/tmp/deleteme')
+  # p.destroy!                          # => true
+  # p.destroy!                          # => false    # its already gone, but the FSDS object remains.
+  # p.destroy! :sudo => 'superSecret'   # => false    # This does delete as super user, but its still not there
+  # FSDS.destroy!('/tmp/not_here_123')  # => false    # This assumes that you have set FSDS::default_type
+  def destroy!(options={})
+    begin
+      if options.has_key? :sudo
+        system_to_boolean "echo #{options[:sudo]}| sudo -S rm -r #{path}"
+      else
+        system_to_boolean "rm -r #{path}"
+      end
+    rescue
+      false
+    end
+  end
   
+  # Returns the path minus the location of the File or Dir.
+  #
+  # Examples:
+  #   FSDS::FS::File.new('/tmp/deleteme.txt').name  #=> "deleteme.txt"
+  #   FSDS::FS::Dir.new('/tmp/deleteme').name  #=> "deleteme"
+  def name
+    path.split(::File::Separator).last
+  end
+  
+  # Move file or directory from current location to given location
+  #
+  # Examples:
+  #   f = FSDS::FS::File.touch '/tmp/deleteme.txt'
+  #   f.move '~'                                      # Moves the file 'f' to the home dir and returns self
+  #   f.path                                          #=> "/home/username/deleteme.txt"   # this is relitive to your path... '~'
+  def move(new_location, options={})
+    if String === new_location
+      new_location = ::File.expand_path(new_location) + ::File::Separator
+      raise FSDS::WriteError if ::File.exists?(new_location + name)
+      begin
+        raise FSDS::IOError unless system_to_boolean(
+          options.has_key?(:sudo) ? "echo #{options[:sudo]}| sudo -S mv #{path} #{new_location}" : "mv #{path} #{new_location}"
+        ) && self.path=(new_location + name)
+      rescue
+        raise FSDS::IOError
+      end
+    else
+      raise "The first paramater must be a String representation of the path to the new location."
+    end
+    return self
+  end
+    
   # Cute little trick that allows makes instance methods work on the class
   # 
   # Example:
   #   FSDS.touch('/tmp/deleteme')  # is equivalent to => FSDS.new('/tmp/deleteme').touch
   def self.method_missing(mth, *args)
     self.new(*args).send(mth)
-  end
-  
-  def method_missing(mth, *args)
-    # FSDS::FS.constants.each {|const| puts const.methods.include? 'touch'}
   end
 private
   # def constantize(camel_cased_word)
