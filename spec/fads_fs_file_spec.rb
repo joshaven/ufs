@@ -150,24 +150,17 @@ describe 'FSDS::FS::File' do
     lambda {@file.read_by_bytes(0, 100)}.should_not raise_error
   end
   
-  it 'should be able to break out of the FSDS::FS::File proxy and access ::File methods' do
-    # pending {
-    #   @file.touch
-    #   @file.executable?.should be_false
-    #   @file.permissions! 777
-    #   @file.executable?.should be_true
-    # }
+  it 'should port ::File class methods' do
+    @file.touch
+    @file.executable?.should be_false
+    @file.permissions! 777
+    @file.executable?.should be_true
     
-    # probable solution the following duplicates makes a proxy method to File...:
-    # Soure: http://blog.jayfields.com/2008/02/ruby-replace-methodmissing-with-dynamic.html
-    # ::File.public_methods(false).each do |meth|
-    #   (class << self; self; end).class_eval do
-    #     define_method meth do |*args|
-    #       ::File.send meth, *args
-    #     end
-    #   end
-    # end
-    
-puts    FSDS::FS::File.join('tmp')#.should == ::File.join('tmp', 'test')
+    FSDS::FS::File.new.join('tmp', 'test').should == ::File.join('tmp', 'test')
+  end
+  
+  it 'should port ::File instance methods' do
+    @file.touch
+    @file.atime.should == ::File.new(@fn).atime
   end
 end
