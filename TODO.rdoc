@@ -1,0 +1,18 @@
+Conversions
+* Finish converting class_eval statements to add_class_method for proxy methods
+* Finish converting class_eval statements to add_instance_metod for proxy methods
+  
+Features:
+* Support S3 datastore
+* Support .tgz datastore
+  
+Finishing up:
+* Double check documentation of all methods
+* Insure that at least one example of every proxy instance & class method is tested from the groups at the bottom of file.rb & dir.rb... Where possible test passing of blocks, etc.
+* Double check that all methods either work with binary files or are specifically text methods.
+  
+Ideas/questions/scratch_and_sniff:
+* Should any or all proxy methods return something other then the return status of the proxied method?
+  * String.should === FSDS.join()
+  * FSDS.touch('/tmp/deleteme.txt').exist?.should be_true
+* Should there be a way to force proxy access?   FSDS::FS::File.proxy_this(:mkdir, '/tmp/deleteme')

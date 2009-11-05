@@ -1,20 +1,63 @@
-= fsds - File System as a Data Store
+= fsds - File System as a Data Store (Or anything that is FileSystem Like...)
 
 == Notice
 This project is under development.  Your welcome to use it but it is NOT
-complete and the API is NOT stable.
+complete and the API is subject to change.
 
 == Description
 File System as a Data Store.  The goal of this gem is to make using your file
 system, or other data storage that can work like a file system, for document
-storage in a friendly way.  This gem was tested & documented from the ground up.
-To begin with, I intend to support the local file systems as well as Amazon S3,
-interchangeably.
+storage in a friendly way.  This gem has been tested & documented from the ground
+up so the testing and documentation should be pretty comprehensive.
 
-== Examples
-  # Touching on directories & text files...
+To begin with, I intend to support the local file systems as well as Amazon S3, and
+in compressed .tgz on either the filesystem or S3 interchangeably.
+
+== Mini-API
+You should be able to use the standard read & write methods regardless of the adapter 
+chosen.  For example, you should be able to FSDS.touch('path/to/location.txt') 
+when using the FS, S3 or TGZ adapters interchangeably.  The adapters, however will
+have to be configured before use which may consist of at least a declaration of the
+default_adapter type as well as possibly providing authentication, location or other 
+communication data.
+
+Adapter standard methods should include:
+* Common to all FSDS objects
+  * :exists?            #=> true/false
+  * :destroy!           #=> true/false
+  * :type               # returns the class name
+  * :proprieties        # returns a hash of properties, with keys: (:name, :group, :permissions, etc)
+  * :name               # returns the file or directory name, ie: a path of "/tmp/deleteme.txt" will give you "deleteme.txt"
+  * :move(new_path)     # moves file or directory to new location and returns self
+  * The following methods for setting, reading & writing: permissions, group & owner
+    * :permissions, permissions?, & permissions!
+    * :owner, :owner?, & :owner!
+    * :group, :group?, & :group!
+* file objects           (An object that contains singular content, binary, text, etc.)
+  * :touch(path_string)         #=> file object (or equivalent)
+  * :concat!(data)              #=> appends or creates a file with the given content.  Returns a file object (or equivalent)
+  * :concat(data), :<<(data)    #=> appends.  Returns a file object (or equivalent) or FSDS::WriteError if file doesn't exist.
+  * :writeln(data)              #=> appends the file with a line of text, it is assured to be on its own line without extra newline characters
+  * :read                       #=> content of file
+  * :readln(number)             #=> returns the line requested form the file or nil if the line doesn't exist
+  * :readln(range)              #=> returns an array of lines as requested ie: file.readln(0..9)
+  * :read_by_bytes(start, continue)  #=> reads from the first byte requested through the number of continue bytes
+  * Object should proxy the methods of the real object where possible... The ::FSDS::FS::File object proxies to ::File
+    * For example file.executable? should answer with the ::File.executable?(path).  In this example, the path variable is taken from the file instance of ::FSDS::FS::File
+* directory objects      (An object that contains file objects)
+  * :mkdir(path_string)         #=> directory object (or equivalent) or raise FSDS::WriteError if the directory cannot be created
+  * :mkdir!(path_string)        #=> directory object (or equivalent) will attempt to make intermediate directories
+  * :to_a                       #=> returns an array of the objects contained in the directory
+  * :<<(file_object)            #=> moves the given file_object to the directory
+  * Object should proxy the methods of the real object where possible... The ::FSDS::FS::File object proxies to ::File
+    * For example FSDS::FS::Dir.pwd will return the working directory through proxying to ::Dir.pwd().
+
+== Example 1
+  # Touching on directories & text files using the FileSystem adapter:
+  FSDS.default_adapter = FSDS::FS
   dir = FSDS.mkdir '/tmp/testing_deleteme'
   f = FSDS.touch "#{dir}/deleteme"
+  f.to_s                      #=> "/tmp/testing_deleteme/deleteme"
   f << "Hello"
   f.read                      #=> "Hello"
   f << " world"
@@ -23,9 +66,10 @@ interchangeably.
   f.read                      #=> "Hello world\nanother line\nmore stuff\n"
   f.readln 0                  #=> "Hello world"
   f.readln 0..1               #=> ["Hello world", "another line"]
-  dir.destroy!
+  dir.destroy!                # lets see what happens if we delete the folder that contains the file...
+  f.read                      #=> FSDS_Errors::ReadError: FSDS_Errors::ReadError
+  f.exists?                   #=> false
   dir.exists?                 #=> false
-
 
 
 == Note on Patches/Pull Requests
@@ -42,3 +86,8 @@ interchangeably.
 == Copyright
 
 Copyright (c) 2009 Joshaven Potter. See LICENSE for details.
+
+
+jalapeño        - Heat: Medium (SR: 2,500-8,000)
+Serrano Pepper  - Heat: Hot (SR: 10,000-50,000)
+Habanero        - Heat: Exceptionally Hot (SR: 100,000-350,000)

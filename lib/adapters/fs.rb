@@ -1,5 +1,6 @@
-# require File.expand_path(File.dirname(__FILE__) + '/../../fsds')
-class FSDS::FS
+require File.join(File.expand_path(File.dirname(__FILE__)), '..', 'fsds') unless defined?(FSDS)
+
+class FSDS::FS < FSDS
   attr_accessor :path, :permissions, :owner, :group, :type
   
   # Retuns a FSDS adapter instance (File System Object).  The path, permissions, ownership & group can be 
@@ -31,60 +32,6 @@ class FSDS::FS
     self.group       = grp unless grp.nil?
   end
   
-  # # Return or set the type of the FSDS.  The answer will be one of: the adapter types, or nil
-  # # def type(klass = nil)
-  # #   if klass.nil?
-  # #     @type = ::File.file?(path || '') ? File : (::File.directory?(path || '') ? Dir : nil)
-  # #   elsif Class === klass.class
-  # #     @type = klass
-  # #   else
-  # #     nil
-  # #   end
-  # # end
-  # 
-  # # Create a file or directory on the filesystem if it doesn't already exist and set permissions, owner,
-  # # & group if specified. See FSDS::new for full param options.  They type paramter is required and must be 
-  # # one of: [:file, :dir].  Returns an FSDS instance.  See also the shortcut methods: :mkdir & :touch
-  # #
-  # #
-  # # Examples:
-  # #   p=FSDS.new  '/tmp/deleteme'         # This assumes that you have set: FSDS::default_type = FSDS::FS
-  # #   p.create! :file                     # Returns an instance of: FSDS::FS::File
-  # #
-  # #   # The same can be done in one line: # Also assumes that you've set: FSDS::default_type = FSDS::FS
-  # #   FSDS.create! :file, '/tmp/deleteme'
-  # #
-  # #   # If you need root access then send it a sudo:
-  # #   FSDS.create! :file, '/etc/deleteme', {:sudo => 'superSecretPassword'}
-  # def create!(type, pth=path, options={})
-  #   options, pth = pth, options if Hash === pth   # Swap arguments if arguments are backwards
-  #   pth = path if Hash === pth
-  # 
-  #   return false unless String === pth            # validate arg
-  #   path = pth                                    # ensure the path is set
-  # 
-  #   cmd_prefix = options.has_key?(:sudo) ? "echo #{options[:sudo]}| sudo -S " : ''
-  #   my_type = self.type  # minimize access to File.file? & File.directory?
-  # 
-  #   if type == :dir && !(self === Dir)
-  #     return false unless my_type == nil || my_type == Dir
-  #     raise("Could not touch file: #{path}") unless system_to_boolean("#{cmd_prefix} mkdir #{options[:arguments]} #{path}")
-  #   elsif type == :file
-  #     return false unless my_type == nil || my_type == File
-  #     raise("Could not mkdir directory: #{path}") unless system_to_boolean("#{cmd_prefix} touch #{options[:arguments]} #{path}") 
-  #   else
-  #     # bail with false if trying to make a dir into a file or a file into a dir
-  #     return false if (type == :dir && self == File) || (type == :fie && self == Dir)
-  #   end
-  # 
-  #   # sudo_options = options.has_key?(:sudo) ? {:sudo => options[:sudo]} : {}
-  #   # self.owner! sudo_options
-  #   # self.group! sudo_options
-  #   # self.permissions! sudo_options
-  # 
-  #   return self
-  # end
-  
   # Compares the given path string with the associated FSDS path string. Returns true or false.
   #
   # Example:
@@ -110,17 +57,17 @@ class FSDS::FS
     begin
       looking_for = (self === Dir ? '.' : path)
       file = ::File.new(path)
-      `ls -ahlT #{path}`.split("\n").collect { |line| # itterate through each line of the ls results looking for our record
+      `ls -alT #{path}`.split("\n").collect { |line| # itterate through each line of the ls results looking for our record
         i = line.split(' ')
         return {
           :name         => i[9],
           :permissions  => permissions_as_fixnum(i[0]), #sprintf("%o", File.stat(path).mode)[- 3..-1].to_i, 
-          :subordinates => i[1],  # Number of subordant object... directory contains at least: (. & ..), file contains 1: its self
+          :subordinates => i[1].to_i,  # Number of subordant object... directory contains at least: (. & ..), file contains 1: its self
           :owner        => i[2],
           :group        => i[3],
-          :size         => i[4],
+          :size         => i[4].to_i,
           :modified     => file.mtime, # 5-8 will be time but its easier to use the File object to retrieve the modified & mkdird times
-          :mkdird      => file.ctime 
+          :created      => file.ctime 
         } if looking_for == i[9] || Regexp.new("#{path} ->") === "#{i[9]} #{i[10]}"
       }.compact
     rescue
@@ -281,7 +228,7 @@ class FSDS::FS
   # p.destroy!                          # => true
   # p.destroy!                          # => false    # its already gone, but the FSDS object remains.
   # p.destroy! :sudo => 'superSecret'   # => false    # This does delete as super user, but its still not there
-  # FSDS.destroy!('/tmp/not_here_123')  # => false    # This assumes that you have set FSDS::default_type
+  # FSDS.destroy!('/tmp/not_here_123')  # => false    # This assumes that you have set FSDS.default_adapter
   def destroy!(options={})
     begin
       if options.has_key? :sudo
@@ -325,34 +272,28 @@ class FSDS::FS
     end
     return self
   end
-    
-  # Cute little trick that allows makes instance methods work on the class
-  # 
-  # Example:
-  #   FSDS.touch('/tmp/deleteme')  # is equivalent to => FSDS.new('/tmp/deleteme').touch
-  def self.method_missing(mth, *args)
-    self.new(*args).send(mth)
+  
+  def self.method_missing(sym, *args, &block)
+    if FSDS::FS::File.public_methods.include?(sym.to_s)
+      FSDS::FS::File.send(sym, *args, &block) unless FSDS::FS::Dir.public_methods.include?(sym.to_s)
+    elsif FSDS::FS::Dir.public_methods.include?(sym.to_s)
+      FSDS::FS::Dir.send(sym, *args, &block)
+    else
+      super
+    end
   end
+  
 private
-  # def constantize(camel_cased_word)
-  #   names = camel_cased_word.split('::')
-  #   names.shift if names.empty? || names.first.empty?
-  # 
-  #   constant = Object
-  #   names.each do |name|
-  #     constant = constant.const_defined?(name) ? constant.const_get(name) : constant.const_missing(name)
-  #   end
-  #   constant
-  # end
-
+  # This returns true or false when evaluating a system command.
   def system_to_boolean(str)
     "0\n" == `#{str} >& /dev/null; echo $?`
   end
   
+  # converts permissions as a string to octal format... for example: -rwxr-xr-x will become: 755
   def permissions_as_fixnum(permissions_string)
     permissions_string.slice(1..9).gsub('--x','1').gsub('-w-','2').gsub('-rx','3').gsub('r--','4').gsub('r-x','5').gsub('rw-','6').gsub('rwx','7').to_i
   end
 end
 
-# Require supporting files:  everything in ./fs that ends in .rb
-Dir.glob(File.expand_path(File.dirname(__FILE__))+'/fs/*.rb' ).each {|fn| require fn }
+# Require supporting files:  everything in ./fs/*.rb
+Dir.glob(File.join(File.expand_path(__FILE__).split('.').first, '*.rb')).each {|path| require path }
