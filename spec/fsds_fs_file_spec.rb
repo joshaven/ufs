@@ -1,8 +1,10 @@
-require File.expand_path(File.dirname(__FILE__) + '/spec_helper')
+require File.join(File.expand_path(File.dirname(__FILE__)), 'spec_helper')
 
 describe 'FSDS::FS::File' do
   before :all do
     @fn = '/tmp/deleteme.txt'
+    @app_root = File.expand_path( File.join(File.dirname(__FILE__), '..') )
+
     # @sudo_password = 'SetMe'
   end
   before :each do
@@ -31,6 +33,7 @@ describe 'FSDS::FS::File' do
     @file.exists?.should be_false
     @file.touch
     @file.exists?.should be_true
+    FSDS::FS::File.exists?(@fn).should be_true
   end
   
   it 'should be able to destroy!' do
@@ -49,7 +52,15 @@ describe 'FSDS::FS::File' do
   
   it "should respond to proprieties" do
     @file.touch @fn
-    @file.proprieties[:group].should =~ /wheel|root/
+    @file.proprieties[:name         ].should == "/tmp/deleteme.txt"
+    @file.proprieties[:permissions  ].should == 644                   # The default permissions may be different on different machines
+    @file.proprieties[:subordinates ].should == 1                     # self is the only containce of this because its a file
+    @file.proprieties[:owner        ].should == `whoami`.chomp        # I owen it cause I made it... Which is why God has the right to define sin and its consiquence.
+    @file.proprieties[:group        ].should =~ /wheel|root/          # root on some machines and wheel on others
+    @file.proprieties[:size         ].should == 0                     # Its empty, if infact it was just created.
+    @file.proprieties[:modified     ].class.should == Time            # The modified time
+    @file.proprieties[:created      ].class.should == Time            # The created time
+    @file.proprieties[:modified].should == @file.proprieties[:created]
   end
   
   it 'should handle :permissions permissions? permissions!' do
@@ -96,7 +107,7 @@ describe 'FSDS::FS::File' do
     FSDS::FS::File.should === @file.concat!('Hello')
     FSDS::FS::File.should === (@file << ' world')
     @file.destroy!.should be_true
-    (lambda { @file << 'hello' }).should raise_error(FSDS::IOError)
+    (lambda { @file << 'hello' }).should raise_error(FSDS::WriteError)
   end
   
   it 'should write by line' do
@@ -150,6 +161,14 @@ describe 'FSDS::FS::File' do
     lambda {@file.read_by_bytes(0, 100)}.should_not raise_error
   end
   
+  it 'should be able to move' do
+    @file.destroy!("~/#{@fn}")
+    @file.touch.should be_true
+    FSDS::FS::File.should === @file.move('~')
+    @file.path.should == File.expand_path("~/#{@file.name}")
+    @file.destroy!.should be_true
+  end
+  
   it 'should port ::File class methods' do
     @file.touch
     @file.executable?.should be_false
@@ -157,10 +176,29 @@ describe 'FSDS::FS::File' do
     @file.executable?.should be_true
     
     FSDS::FS::File.new.join('tmp', 'test').should == ::File.join('tmp', 'test')
+    FSDS::FS::File.join('tmp', 'test').should == ::File.join('tmp', 'test')
   end
   
   it 'should port ::File instance methods' do
     @file.touch
     @file.atime.should == ::File.new(@fn).atime
+  end
+  
+  it 'should port some instance methods to class methods' do
+    bin_file  = File.join( @app_root, 'spec', 'fixtures', 'copycat.jpg' )
+    text_file = File.join( @app_root, 'spec', 'spec_helper.rb' )
+    
+    FSDS::FS::File.read(bin_file).should == FSDS::FS::File.new(bin_file).read
+    FSDS::FS::File.exists?(text_file).should be_true
+  end
+  
+  it 'should be able to handle binary files' do
+    FSDS.default_adapter = FSDS::FS
+    spec_path = File.expand_path(File.dirname(__FILE__))
+    fixture_path = FSDS::FS::File.join(spec_path, 'fixtures')
+    pic = FSDS::FS::File.new("#{spec_path}/fixtures/copycat.jpg")
+    pic.move(spec_path).path.should == FSDS::FS::File.join(spec_path, 'copycat.jpg')
+    pic.move(fixture_path).path.should == FSDS::FS::File.join(fixture_path, 'copycat.jpg')
+    (14000...16000).should === pic.size
   end
 end

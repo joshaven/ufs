@@ -1,430 +1,129 @@
+require File.join(File.expand_path(File.dirname(__FILE__)), 'metaclass') unless defined?(Object.metaclass)
+require File.join(File.expand_path(File.dirname(__FILE__)), 'errors') unless defined?(FSDS_Errors)
+
 class FSDS
-  # Require all adapters  requireing any: ./lib/adapters/#{adapter_name}/#{adapter_name}.rb
-  # ::Dir.glob('lib/adapters/*.rb').each {|adapter_file| require adapter_file }
-  Dir.glob(File.expand_path(File.dirname(__FILE__))+'/adapters/*.rb').each {|adapter_file| require adapter_file }
+  include FSDS_Errors
   
-  FSDS::IOError = "IOError: Cannot communicate with file or directory."
-  FSDS::ReadError = "ReadError: Cannot read from file or directory."
-  FSDS::WriteError = "WriteError: Cannot write to file or directory."
-
-#^^^^^^^^^^^^^^^ Above this line stays
-
-
-
-
-  attr_accessor :path, :permissions, :owner, :group
-  # Retuns a FSDS (File System Object).  The path, permissions, ownership & group can be 
-  # specified as attributes. The filesystem is not touched by this method.  The methods that 
-  # make changes to the filesystem are generally ending with an exclamation point (!) and the 
-  # methods that read from the filesystem are generally ending with a question mark (?).
-  #
-  # Examples:
-  #   FSDS.new '/tmp/test'
-  #   FSDS.new '/tmp/test', 755
-  #   FSDS.new '/tmp/test', 755, 'joshaven'
-  #   FSDS.new '/tmp/test', 755, 'joshaven', 'staff'
-  #   FSDS.new '/tmp/test', nil, 'joshaven'     # The attributes are ordered, however they are ignored if nil.
-  def initialize(dir=nil, priv=nil, own=nil, grp=nil)
-    self.path        = File.expand_path(dir) unless dir.nil?
-    self.permissions = priv unless priv.nil?
-    self.owner       = own unless own.nil?
-    self.group       = grp unless grp.nil?
-  end
-
-  # Return or set the type of the FSDS.  The answer will be one of: the adapter types, or nil
-  def type(klass = nil)
-    if klass.nil?
-      @type = File.file?(path || '') ? File : (File.directory?(path || '') ? Dir : nil)
-    elsif Class === klass.class
-      @type = klass
+  # For FSDS.new only: returns an instance of the default_adapter or self if no default_adapter has been specified
+  def self.new(*args, &block)
+    if self == FSDS
+      klass = FSDS.default_adapter ? FSDS.default_adapter : self
+      obj = klass.send(:allocate)
+      obj.send(:initialize, *args, &block)
+      return obj
     else
-      nil
+      super
     end
   end
-
-  # Shortcut method to finding the type of a filesystem object without instantizing an FSDS.
+  
+  # Set or get the default filesystem adapter...  If you don't set the default 
+  # adapter then the correct adapter cannnot be automatically determined.
   #
   # Example:
-  #   FSDS.type('/tmp')   #=> Dir
-  def self.type(*args)
-    FSDS.new(*args).send(:type)
+  #   FSDS.default_adapter FSDS::FS
+  #   # FSDS.touch is now the same thing as: FSDS::FS::File.touch
+  #   FSDS.default_adapter   # => FSDS::FS
+  def self.default_adapter(type = :noting_to_set)
+    @@default_adapter ||= nil
+    type == :noting_to_set ? @@default_adapter : @@default_adapter=type
   end
   
-  # Compares the type of the FSDS with the given type.  Returns true or false.
+  # This is a convience method to set the default_adapter.  See default_adapter
+  def self.default_adapter=(type)
+    self.default_adapter type
+  end
+  
+  # This allows a Adapter object to register methods to the default_adapter through its inheritence of FSDS. 
+  # The purpose for this is to be able to guess what adapter class is needed.  Registering :touch is what 
+  # allows FSDS::FS to be able to figure out that a method call to :touch means that you must want a FSDS::FS::File.
+  #
+  # If the method is already registered then the registry is removed, this is a protection so that, for example, 
+  # both FSDS::FS::Dir & FSDS::FS::File cannot register the :<< method which does different things.
   #
   # Example:
-  #   FSDS.new('/tmp') === Dir  #=> true
-  def ===(klass)
-    self.type == klass
-  end
-  
-  # Compares the given path string with the associated FSDS path string. Returns true or false.
-  #
-  # Example:
-  #   FSDS.new('/tmp') == '/tmp'  #=> true
-  def ==(string)
-    self.path == string
-  end
-  
-  # Create a file or directory on the filesystem if it doesn't already exist and set permissions, owner,
-  # & group if specified. See FSDS::new for full param options.  They type paramter is required and must be 
-  # one of: [:file, :dir].  Returns an FSDS instance.  See also the shortcut methods: :mkdir & :touch
-  #
-  #
-  # Examples:
-  #   p=FSDS.new  '/tmp/deleteme'        # this sets the path that is needed for the next command.
-  #   p.create! :file
-  #   # OR
-  #   FSDS.create! :file, '/tmp/deleteme', {:sudo => 'superSecretPassword'}
-  #   p.destroy!                        # cleanup sample file!
-  def create!(type, pth=path, options={})
-    options, pth = pth, options if Hash === pth   # Swap arguments if arguments are backwards
-    pth = path if Hash === pth
-    
-    return false unless String === pth            # validate arg
-    path = pth                                    # ensure the path is set
-    
-    cmd_prefix = options.has_key?(:sudo) ? "echo #{options[:sudo]}| sudo -S " : ''
-    my_type = self.type  # minimize access to File.file? & File.directory?
-    
-    if type == :dir && !(self === Dir)
-      return false unless my_type == nil || my_type == File
-      raise("Could not touch file: #{path}") unless system_to_boolean("#{cmd_prefix} mkdir #{options[:arguments]} #{path}")
-    elsif type == :file
-      return false unless my_type == nil || my_type == File
-      raise("Could not mkdir directory: #{path}") unless system_to_boolean("#{cmd_prefix} touch #{options[:arguments]} #{path}") 
-    else
-      # bail with false if trying to make a dir into a file or a file into a dir
-      return false if (type == :dir && self == File) || (type == :fie && self == Dir)
-    end
-    
-    sudo_options = options.has_key?(:sudo) ? {:sudo => options[:sudo]} : {}
-    self.owner! sudo_options
-    self.group! sudo_options
-    self.permissions! sudo_options
-    
-    return self
-  end
-
-
-  
-  # Create a Directory on the filesystem if it doesn't already exist.  This is a shortcut to the :create! 
-  # method with specifying :dir.  Returns a FSDS instance.  See also: create!
-  #
-  # Examples:
-  #   p=FSDS.new  '/tmp/deleteme'
-  #   p.mkdir
-  #   # OR:
-  #   p = FSDS.mkdir '/tmp/deleteme'
-  #   p.destroy!                      # cleanup test dir
-  def mkdir(pth=path, options={})
-    create! :dir, pth, options
-  end
-  
-  # Create a File on the filesystem if it doesn't already exist.  This is a shortcut to the :create! 
-  # method with specifying :file.  Returns a FSDS instance.  See also: create!
-  #
-  # Examples:
-  #   p=FSDS.new  '/tmp/deleteme'
-  #   p.touch
-  #   # OR:
-  #   p = FSDS.touch '/tmp/deleteme'
-  #   p.destroy!                      # cleanup test file
-  def touch(pth=path, options={})
-    create! :file, pth, options
-  end
-  
-  
-  # Get or set the owner properity of a FSDS Ruby object.  This does not change or query anything in the filesystem.  
-  # To make changes to the filesystem, call the :owner! method.
-  # To query the filesystem call the :group? method.
-  #
-  # Examples:
-  #   FSDS.mkdir('/tmp/testing.txt')
-  #   FSDS.owner 'joshaven'      #=> 'joshaven'
-  #   FSDS.owner                 #=> 'joshaven' 
-  def owner(arg=nil)
-    arg.nil? ? @owner : @owner = arg.to_s
-  end
-  alias_method :owner=, :owner
-  
-  # Returns the current owner of the FSDS or nil if it doesn't exitst.  This reads from the filesystem
-  #
-  # Examples:
-  #   p = FSDS.mkdir '/tmp/my_test'   # => #<FSDS:0x10062dfd0 @permissions=nil, @path="/tmp/my_test", @group=nil>
-  #   p.owner?                        # => "joshaven"  # or what ever your username is
-  #   p.destroy!                      # => true        # just a bit of cleanup
-  def owner?
-    # exists? ? `ls -al #{path} | grep '[0-9] \.$'`.split[2] : false
-    proprieties[:owner]
-  end
-  
-  # Sets the current owner of the FSDS.  Returns true or false.
-  #
-  # options: options must be a hash with two optional keys:  :sudo & :arguments
-  # * sudo: (optional) your sudo password
-  # * arguments: (optional) string containing valid chown options, ie: '-R' for recursive
-  #
-  # Examples:
-  #   p = FSDS.mkdir '/tmp/my_test'  #
-  #   p.owner 'root'
-  #   # The following will issue the command `sudo chown -R root /tmp/my_test` and supplies the password
-  #   p.owner! {:sudo => 'mySecretPassword', :arguments => '-R'}  
-  def owner!(arg=owner, options={})
-    options, arg = arg, options if Hash === arg && !arg.empty?  # Swap arguments if arguments seem to be backward
-    arg = owner if Hash === arg
-    
-    return false unless String === arg                          # validate arg
-    owner = arg
-    
-    return false if owner.nil? || !(Hash === options)
-    system_to_boolean "#{'echo '+options[:sudo]+'|sudo -S ' if options.has_key?(:sudo)}chown #{options[:arguments]} #{owner} #{path}" unless path.nil? || owner.nil?
-  end
-  
-  
-  # Get or set the group properity of a FSDS Ruby object.  This does not change or query anything in the filesystem.  
-  # To make changes to the filesystem, call the :owner! method.
-  # To query the filesystem call the :group? method.
-  def group(arg=nil)
-    arg.nil? ? @group : @group = arg.to_s
-  end
-  alias_method :group=, :group
-  
-  
-  # Returns the current group of the filesystem object or nil if it doesn't exitst.  This reads from the filesystem.
-  #
-  # Examples:
-  #   FSDS.group? '/tmp'    #=> "wheel"
-  def group?
-    proprieties[:group]
-  end
-
-  # Sets the current group of the FSDS.  Returns true or false.
-  #
-  # grp_name: optional group name as a string.  If not provided, the group setter will use the value of the @group 
-  # instance variable.
-  #
-  # options: options must be a hash with two optional keys:  :sudo & :arguments
-  # - sudo: (optional) your sudo password
-  # - arguments: (optional) string containing valid chown options, ie: '-R' for recursive
-  #
-  # Examples:
-  #   p = FSDS.mkdir '/tmp/my_test'
-  #   p.owner 'root'
-  #   # The following will issue the command `sudo chown -R root /tmp/my_test` and supplies the password
-  #   p.owner! {:sudo => 'mySecretPassword', :arguments => '-R'}
-  def group!(arg=group, options={})
-    options, arg = arg, options if Hash === arg && !arg.empty?  # Swap arguments if arguments seem to be backward
-    arg = group if Hash === arg                                 # in the event that only options are given
-    
-    return false unless String === arg                      # validate arg
-    group(arg)
-    begin
-      if options.has_key? :sudo
-        system_to_boolean "echo #{options[:sudo]}| sudo -S chgrp #{options[:arguments]} #{group} #{path}"
-      else
-        system_to_boolean "chgrp #{options[:arguments]} #{group} #{path}" 
+  #   # code example from lib/adapters/fs/file.rb
+  #   ['touch', 'create!', "concat!", "concat", "<<", "size"].each do |meth|
+  #     FSDS::FS.register_upline_public_methods(meth, FSDS::FS::File)
+  #   end
+  def self.register_upline_public_methods(meth, obj)
+    if (@downline_methods ||= {}).has_key? meth
+      # need to delete metod cause it must exist in multiple downlines if its already been defined
+      self.default_adapter.metaclass.class_eval do
+        undef meth
       end
-    rescue
-      false
-    end
-  end
-
-  # Get or set the permissions properity of a FSDS Ruby object.  This does not change or query anything in the filesystem.  
-  # To make changes to the filesystem, call the :permissions! method.
-  # To query the filesystem call the :permissions? method.
-  def permissions(arg=nil)
-    arg.nil? ? @permissions : @permissions = arg.to_s
-  end
-  alias_method :permissions=, :permissions
-  
-  # Returns an integer representation of the permissions or nil if SFO doesn't exist.
-  #
-  # Example: 
-  #   FSDS('/tmp').permissions?   # => 777
-  def permissions?
-    proprieties[:permissions]
-  end
-  
-  # Sets the FSDS permissions if the FSDS & permissions are valid.
-  # Returns false if given invalid permissions or directory is not in existence.
-  # The Permissions can be set via arguments or via the :permissions method.
-  #
-  # - arg: optional permission to set, can be inferred from the permissions instance variable if set.
-  # - options: optional hash with a sudo and/or arguments keys: p.destroy!({:sudo => 'superSecret', :arguments => '-R'})
-  def permissions!(arg=permissions, options={})
-    options, arg = arg, options if Hash === arg     # Swap arguments if arguments seem to be backward
-    arg = permissions if Hash == arg               # in the event that only options are given
-
-    return false unless Fixnum === arg && /[0-7]{3}/ === arg.to_s # validate arg
-    permissions(arg)
-    
-    unless permissions.nil? || permissions? == permissions  # only proceed if there is something to do
-      begin
-        if options.has_key? :sudo
-          system_to_boolean "echo #{options[:sudo]}| sudo -S chmod #{options[:arguments]} #{permissions} #{path}"
-        else
-          system_to_boolean "chmod #{options[:arguments]} #{permissions} #{path}" 
+    else 
+      unless self.default_adapter.public_methods.include? meth.to_s # Don't overwrite existing methods
+        self.default_adapter.add_class_method meth do |*args, &block|
+          obj.send(meth, *args, &block)
         end
-      rescue
-        false
+        @downline_methods
       end
-    end
+    end if self.default_adapter
   end
   
-  # Returns true or false.  Shortcut method to: FSDS.new('/tmp').type != nil
-  #
-  # Examples:
-  #   FSDS.exists?("/tmp")           #=> true
-  def exists?
-    self.type != nil
-  end
-  
-  # Removes FSDS from filesystem, returning true if successful or false if unsuccessful.
-  #
-  # Options:
-  # * options may contain a hash with a sudo key containing a password: p.destroy!({:sudo => 'superSecret'})
+  # If the public method is not found in FSDS, FSDS will attempt to pass the request to the default_adapter.
   #
   # Example:
-  # p = FSDS.mkdir('/tmp/text')
-  # p.destroy!                          # => true
-  # p.destroy!                          # => false    # its already gone, but the FSDS object remains.
-  # p.destroy! :sudo => 'superSecret'   # => false    # its already gone, but the FSDS object remains.
-  # FSDS.destroy!('/tmp/not_here_123')  # => false    # By the way, the method missing magic works here to.
-  def destroy!(options={})
-    begin
-      if options.has_key? :sudo
-        system_to_boolean "echo #{options[:sudo]}| sudo -S rm #{'-r' if self === Dir} #{path}"
-      else
-        system_to_boolean "rm #{'-r' if self === Dir} #{path}"
-      end
-    rescue
-      false
-    end
-  end
-
-  # Returns a hash of information on the FSDS.  This method is dependent upon a Posix environment!
-  #
-  # Keys:
-  # :name, :permissions, :owner, :group, :size, :modified, :mkdird, :subordinates  (subordinates are number of items contained)
-  def proprieties
-    begin
-      looking_for = (self === Dir ? '.' : path)
-      file = File.new(path)
-      `ls -ahlT #{path}`.split("\n").collect { |line| # itterate through each line of the ls results looking for our record
-        i = line.split(' ')
-        return {
-          :name         => i[9],
-          :permissions  => permissions_as_fixnum(i[0]), #sprintf("%o", File.stat(path).mode)[- 3..-1].to_i, 
-          :subordinates => i[1],  # Number of subordant object... directory contains at least: (. & ..), file contains 1: its self
-          :owner        => i[2],
-          :group        => i[3],
-          :size         => i[4],
-          :modified     => file.mtime, # 5-8 will be time but its easier to use the File object to retrieve the modified & mkdird times
-          :mkdird      => file.ctime 
-        } if looking_for == i[9] || Regexp.new("#{path} ->") === "#{i[9]} #{i[10]}"
-      }.compact
-    rescue
-      {}
-    end
-    return {}
-  end
-
-
-  def concat(data)
-    if self === File
-      begin
-        File.open(path, 'a') { |f| f.print data }
-        self
-      rescue
-        raise FSDS::IOError
-      end
+  #   FSDS.default_adapter = FSDS::FS
+  #   FSDS.touch('/tmp/deleteme.txt)  # Will attempt to find a FSDS::FS class method, which will return a FSDS::FS::File object
+  def self.method_missing(sym, *args, &block)
+    if default_adapter && self == FSDS
+      default_adapter.send(sym, *args, &block)
     else
-      raise FSDS::IOError
+      super
     end
   end
-  alias_method :<<, :concat
 
-  # Writes a string with an appended newline to to a file.    
+  # This stores an instance of the proxy object for any methods that are proxied to the
+  # proxy object.  This saves on instantizing but more importantly, saves the state of
+  # the proxy object...
   #
-  # Example:
-  #   f = FSDS.new 'path/to/file'
-  #   f.read   #=> "Line: 0\nLine: 1\n"
-  def writeln(data)
-    concat "#{data.chomp}\n"
+  # Use, for example: proxy(::File.new('/tmp/deleteme'))  in place of  ::File.new('/tmp/deleteme')
+  def proxy(obj)
+    @proxy_object ||= obj
   end
-  
-  # Returns the entire file as a string.
-  #
-  # Example:
-  #   f = FSDS.new 'path/to/file'
-  #   f.read   #=> "Line: 0\nLine: 1\n"
-  def read
-    File.read(path) # documented in IO class
-  end
-
-  # Returns a line as a String or a range of lines as an Array.  Given a 10 line file, the first line would be 0 and 
-  # the last line would be 9. Represented as a range this would be: file.readln(0..9)
-  # 
-  # Examples:
-  #   f = FSDS.new 'path/to/file'
-  #   f.readln 0   #=> "Line: 0"
-  #   f.readln(0..2)   #=> ["Line: 0", "Line: 1", "Line: 2"]
-  def readln(line)
-    if Fixnum === line
-      str = File.readlines(path)[line]
-      String === str ? str.chomp : str
-    elsif Range === line
-      File.readlines(path)[line.first, line.last+1].collect {|str| str.chomp if String === str}
-    end
-  end
-
-  
-  def to_s
-    path
-  end
-
-  # Cute little trick that mkdirs a new instance of FSDS given the args and sends it the requested method...
-  # 
-  # Example:
-  #   FSDS.mkdir('/tmp/test', 755)  # calls => FSDS.new('/tmp/test', 755).mkdir
-  def self.method_missing(mth, *args)
-    self.new(*args).send(mth)
-  end
-
-  # This breaks out of the FSDS wrapper and allows access to the standard objects: File, Dir
-  def method_missing(mth, *args)
-    # this assumes that a path is the standard input... this is not very protected... need to check Dile & Dir API's
-    args = [path] if args.empty?
-    
-    my_type = self.type
-    if my_type == File
-      File.send(mth, *args) if File.methods.include? mth.to_s
-    elsif my_type == Dir
-      Dir.send(mth, *args) if Dir.methods.include? mth.to_s
-    end
-    
-  end
-
 private
-  def system_to_boolean(str)
-    "0\n" == `#{str} >& /dev/null; echo $?`
+  # The following allows an easy way to expand this objects Class methods without overwriting them.
+  # This is useful for building proxying objects.  This method also works on anything that inherits from this object.
+  #
+  # Example:
+  #   # The following creates a class method ie:  FSDS::FS::File.join 'one', 'two', 'three'
+  #   FSDS::FS::File.add_class_method :join do |*args|
+  #     ::File.join *args
+  #   end
+  def self.add_class_method(meth, &block)
+    self.metaclass.send(:define_method, meth, &block) unless self.public_methods.include?(meth)
   end
 
-  def permissions_as_fixnum(permissions_string)
-    permissions_string.slice(1..9).gsub('--x','1').gsub('-w-','2').gsub('-rx','3').gsub('r--','4').gsub('r-x','5').gsub('rw-','6').gsub('rwx','7').to_i
+  # The following allows an easy way to expand this objects Instance methods without overwriting them.
+  # This is useful for building proxying objects.
+  #
+  # Example:
+  #   # The following creates an instance method ie:  FSDS::FS::File.new('/tmp/deleteme.txt').exists?
+  #   FSDS::FS::File.add_instance_method :exists? do |*args|
+  #     ::File.exists? *args
+  #   end
+  def self.add_instance_method(meth, &block)
+    self.class_eval do
+      define_method meth, &block
+    end unless self.instance_methods.include?(meth)
   end
 end
 
-#>>>>>>>>>>>>>>>> Beginning of RemoveMe
-#<<<<<<<<<<<<<<<< End of RemoveMe
+# # Make the :new method optional...  appends the Kernel object.
+# # This is fun but it only allows (FSDS 'something') to become (FSDS.new 'something')
+# # I need something
+# module Kernel
+#   def FSDS(*params)
+#     ::FSDS.new *params
+#   end
+# end
+# 
 
-
-
-# make the :new method optional...  appends the Kernel object.
-
-module Kernel
-  def FSDS(*params)
-    ::FSDS.new *params
+# Require all adapters  requireing any: ./lib/adapters/#{adapter_name}/#{adapter_name}.rb
+Dir.glob(File.expand_path(File.dirname(__FILE__))+'/adapters/*.rb').each do |adapter_file|
+  begin # This allows silent failure of adapters that don't have the required gems... for instance not having the aws/s3 gem.
+    require adapter_file
+  rescue LoadError
   end
 end

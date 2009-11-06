@@ -1,3 +1,5 @@
+require File.join(File.expand_path(File.dirname(__FILE__)), '..', 'fs') unless defined?(FSDS::FS)
+
 class FSDS::FS::File < FSDS::FS
   # Retuns a FSDS::FS::File (File Object).  The path, permissions, ownership & group can be 
   # specified as attributes. The filesystem is not touched by this method.  The methods that 
@@ -34,10 +36,10 @@ class FSDS::FS::File < FSDS::FS
   #
   #
   # Examples:
-  #   p=FSDS.new  '/tmp/deleteme'         # This assumes that you have set: FSDS.default_type = FSDS::FS
+  #   p=FSDS.new  '/tmp/deleteme'         # This assumes that you have set: FSDS.default_adapter = FSDS::FS
   #   p.create! :file                     # Returns an instance of: FSDS::FS::File
   #
-  #   # The same can be done in one line: # Also assumes that you've set: FSDS.default_type = FSDS::FS
+  #   # The same can be done in one line: # Also assumes that you've set: FSDS.default_adapter = FSDS::FS
   #   FSDS.create! :file, '/tmp/deleteme'
   #
   #   # If you need root access then send it a sudo:
@@ -100,7 +102,7 @@ class FSDS::FS::File < FSDS::FS
   #   f.concat 'World'
   #   f.read                    #=> "HelloWorld"
   def concat(data)
-    raise FSDS::IOError unless exists?
+    raise FSDS::WriteError unless exists?
     concat! data
   end
   def concat!(data)
@@ -186,47 +188,77 @@ class FSDS::FS::File < FSDS::FS
   end
 end
 
-
-
-
-# The following will make a proxy method to the ::File class if the file class has the 
-# proper method.  The various if statements are for alternate formats of the paramaters.
-# If the method is not referenced in one of the formatting variables then the variable 
-# will not be assigned.  If a ::File method is extended or modified then this feature is
-# not affected unless the modification changes the order of the variables passed to the 
-# method.  Also, ::File can be extended through including ftools without any changes to 
-# the method proxies as long as that module is included prior to the instantation of the 
-# FSDS::FS::File object.
-class_attributeless_methods = ["allocate", "pipe"]
-class_standard_methods = ["atime", "basename", "blockdev?", "catname", "chardev?", "compare", "copy", "ctime", "delete", "directory?", "dirname", "executable?", "executable_real?", "exist?", "exists?", "expand_path", "extname", "file?", "foreach", "for_fd", "ftype", "grpowned?", "identical?", "install", "link", "lstat", "makedirs", "move", "mtime", "new", "open", "owned?", "pipe?", "readable?", "readable_real?", "readlines", "readlink", "rename", "safe_unlink", "setgid?", "setuid?", "size", "size?", "socket?", "split", "stat", "sticky?", "symlink", "symlink?", "syscopy", "sysopen", "truncate", "unlink", "unlink", "writable?", "writable_real?", "zero?"]
-class_reverse_attribute_methods = ["chown", "lchmod", "lchown", "utime"]
-class_path_sandwich_methods = ["fnmatch", "fnmatch?"]
-class_pathless_methods = ["join", "umask", "popen", "select", "read"]
-instance_standard_methods = ["atime", "chmod", "chmod", "chown", "ctime", "flock", "lstat", "mtime", "path", "truncate"]
-
-::File.methods.each do |meth|
-  if class_attributeless_methods.include? meth          # ie: ::File.allocate          #=> File Object
-    FSDS::FS::File.class_eval "def self.#{meth}; ::File.#{meth}; end" unless FSDS::FS::File.class.methods.include? meth
-  elsif class_standard_methods.include? meth            # ie: ::File.executable? pth
-    FSDS::FS::File.class_eval "def #{meth}(*args); ::File.#{meth} path, *args; end" unless FSDS::FS::File.instance_methods.include? meth
-  elsif class_reverse_attribute_methods.include? meth   # ie: ::File.chmod 777, pth 
-    FSDS::FS::File.class_eval "def #{meth}(*args); ::File.#{meth} *([args, path].flatten.compact); end" unless FSDS::FS::File.instance_methods.include? meth
-  elsif class_path_sandwich_methods.include? meth       # ie: ::File.fnmatch pattern, pth, flags
-    FSDS::FS::File.class_eval "def #{meth}(*args); ::File.#{meth} args.shift, path, *args; end" unless FSDS::FS::File.instance_methods.include? meth
-  elsif class_pathless_methods.include? meth            # ie: ::File.join string, string ... etc
-    FSDS::FS::File.class_eval "def #{meth}(*args); ::File.#{meth} *args; end" unless FSDS::FS::File.instance_methods.include? meth
-  end
-end
-
-::File.instance_methods.each do |meth|
-  if instance_standard_methods.include? meth            # ie: ::File.each &block
-    FSDS::FS::File.class_eval("def #{meth}(*args); ::File.new(path).#{meth} *args; end") unless FSDS::FS::File.instance_methods.include?(meth)
-  end
-end
-
-# create class methods that point at instance methods and don't require arguments
+# proxy instance methods as class methods
 [ 'exists?', 'create!', 'touch', 'read', 'size', 'bytes', 'destroy!', 'move', 
   'group', 'group!', 'group?', 'owner', 'owner!', 'owner?', 
   'permissions', 'permissions!', 'permissions?'].each do |meth|
-  FSDS::FS::File.class_eval "def self.#{meth}(*args); self.new(*args).send(:#{meth}); end"
+  FSDS::FS::File.add_class_method meth do |*args|
+    self.new(*args).send(meth)
+  end
+end
+
+# register class methods with FSDS::FS
+['touch', 'create!', "concat!", "concat", "<<", "size"].each do |meth|
+  FSDS::FS.register_upline_public_methods(meth, FSDS::FS::File)
+end
+
+
+# The following will make proxy methods to the ::File class if the file class has the 
+# proper method.  The various cases are for alternate formats of the paramaters.
+# If the method is not referenced in one of the formatting variables then the method will
+# not be proxied.  If a ::File method is extended or modified then this feature is
+# not affected unless the modifications effect the paramaters of the method.  Also, ::File
+# can be extended through including ftools without any changes to the method proxies as 
+# long as that module is included prior to the instantation of the FSDS::FS::File object.
+
+# proxy ::File class methods 
+::File.methods.each do |meth|
+  case meth
+  # Class proxy: () to ::File class method
+  when *["allocate", "pipe"]
+    FSDS::FS::File.add_class_method meth do
+      ::File.send meth
+    end
+  # Instance proxy: (path, [arguments]) to ::File class method
+  when *["atime", "basename", "blockdev?", "catname", "chardev?", "compare", "copy", "ctime", "delete", "directory?", "dirname", 
+         "executable?", "executable_real?", "exist?", "exists?", "expand_path", "extname", "file?", "foreach", "for_fd", "ftype", 
+         "grpowned?", "identical?", "install", "link", "lstat", "makedirs", "move", "mtime", "new", "open", "owned?", "pipe?", 
+         "readable?", "readable_real?", "readlines", "readlink", "rename", "safe_unlink", "setgid?", "setuid?", "size", "size?", 
+         "socket?", "split", "stat", "sticky?", "symlink", "symlink?", "syscopy", "sysopen", "truncate", "unlink", "unlink", 
+         "writable?", "writable_real?", "zero?"]
+    FSDS::FS::File.add_instance_method meth do |*args|
+      ::File.send meth, path, *args
+    end
+  # Instance proxy: (arguments & path) to ::File class method
+  when *["chown", "lchmod", "lchown", "utime"]
+    FSDS::FS::File.add_instance_method meth do |*args|
+      ::File.send meth, *[args, path].compact
+    end
+  # Instance proxy: (args.shift, path, *args) to ::File class method
+  when *["fnmatch", "fnmatch?"]
+    FSDS::FS::File.add_instance_method meth do |*args|
+      ::File.send(meth, *[args.shift, path, args].compact)
+    end
+  # Instance & Class Proxy: (args, [&block]) to ::File class method
+  when *["join", "umask", "popen", "select", "read"]
+    # Define instance methods
+    FSDS::FS::File.add_instance_method meth do |*args, &block|
+      ::File.send meth, *args, &block
+    end
+    # Define class methods (see metaclass.rb for the object extention that made this possible)
+    FSDS::FS::File.add_class_method meth do |*args, &block|
+      ::File.send meth, args, &block
+    end
+  end
+end
+
+# Instance proxy ::File instance methods:
+::File.instance_methods.each do |meth|
+  case meth
+  # Class proxy: (*args)
+  when *["atime", "chmod", "chmod", "chown", "ctime", "flock", "lstat", "mtime", "path", "truncate"]
+    FSDS::FS::File.add_class_method meth do |*args|
+      proxy(::File.new(path)).send(meth, *args)
+    end
+  end
 end
