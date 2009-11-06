@@ -1,8 +1,10 @@
-= fsds - File System as a Data Store (Or anything that is FileSystem Like...)
+= FSDS - File System as a Data Store 
+Or anything that is FileSystem Like... Including a Posix FileSystem, Amazon S3, & .tgz 
+files or combinations of each one.
 
 == Notice
 This project is under development.  Your welcome to use it but it is NOT
-complete and the API is subject to change.
+complete and the API is subject to change.  The filesystem (FSDS::FS) should be fairly stable.
 
 == Description
 File System as a Data Store.  The goal of this gem is to make using your file
@@ -88,6 +90,12 @@ Adapter standard methods should include:
 Copyright (c) 2009 Joshaven Potter. See LICENSE for details.
 
 
-jalapeño        - Heat: Medium (SR: 2,500-8,000)
-Serrano Pepper  - Heat: Hot (SR: 10,000-50,000)
-Habanero        - Heat: Exceptionally Hot (SR: 100,000-350,000)
+=== Contributions
+    Anaheim       - Low (SR: 500 - 5,000)
+    Jalapeño      - Medium (SR: 2,500-8,000)
+    Serrano       - Hot (SR: 10,000-50,000)
+    Cayenne       - Hot (SR: 30,000-50,000)
+    Habanero      - Exceptionally Hot (SR: 100,000-350,000)
+    Naga Jolokia  - Peak (SR: 1,041,427)
+
+If you find that this project is a Serrano or better, please consider donating...
