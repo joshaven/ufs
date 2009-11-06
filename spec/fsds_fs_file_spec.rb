@@ -1,4 +1,4 @@
-require File.join(File.expand_path(File.dirname(__FILE__)), 'spec_helper')
+require File.join( File.expand_path(File.dirname(__FILE__)), 'spec_helper' )
 
 describe 'FSDS::FS::File' do
   before :all do
@@ -18,6 +18,10 @@ describe 'FSDS::FS::File' do
   it 'should instantize' do
     FSDS::FS.should be_true
     FSDS::FS::File.should === FSDS::FS::File.new
+  end
+
+  it 'should not blow up when the path is blank' do
+    FSDS::FS::File.exists?(nil).should be_false
   end
   
   it 'should instantize when given an instance' do
@@ -44,8 +48,8 @@ describe 'FSDS::FS::File' do
     @file.exists?.should be_false
   end
   
-  it 'should respond to :type, ==, & ===' do
-    @file.type.should == FSDS::FS::File
+  it 'should respond to :class, ==, & ===' do
+    @file.class.should == FSDS::FS::File
     FSDS::FS::File.should === @file
     @file.should == @fn
   end

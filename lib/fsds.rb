@@ -24,8 +24,8 @@ class FSDS
   #   # FSDS.touch is now the same thing as: FSDS::FS::File.touch
   #   FSDS.default_adapter   # => FSDS::FS
   def self.default_adapter(type = :noting_to_set)
-    @@default_adapter ||= nil
-    type == :noting_to_set ? @@default_adapter : @@default_adapter=type
+    @default_adapter ||= nil
+    type == :noting_to_set ? @default_adapter : @default_adapter=type
   end
   
   # This is a convience method to set the default_adapter.  See default_adapter
@@ -43,22 +43,22 @@ class FSDS
   # Example:
   #   # code example from lib/adapters/fs/file.rb
   #   ['touch', 'create!', "concat!", "concat", "<<", "size"].each do |meth|
-  #     FSDS::FS.register_upline_public_methods(meth, FSDS::FS::File)
+  #     FSDS::FS.register_downline_public_methods(meth, FSDS::FS::File)
   #   end
-  def self.register_upline_public_methods(meth, obj)
+  def self.register_downline_public_methods(meth, obj)
     if (@downline_methods ||= {}).has_key? meth
       # need to delete metod cause it must exist in multiple downlines if its already been defined
-      self.default_adapter.metaclass.class_eval do
+      self.metaclass.class_eval do
         undef meth
       end
     else 
-      unless self.default_adapter.public_methods.include? meth.to_s # Don't overwrite existing methods
-        self.default_adapter.add_class_method meth do |*args, &block|
+      unless self.public_methods.include? meth.to_s # Don't overwrite existing methods
+        self.add_class_method meth do |*args, &block|
           obj.send(meth, *args, &block)
         end
         @downline_methods
       end
-    end if self.default_adapter
+    end
   end
   
   # If the public method is not found in FSDS, FSDS will attempt to pass the request to the default_adapter.

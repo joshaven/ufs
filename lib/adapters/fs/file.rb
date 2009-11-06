@@ -14,26 +14,10 @@ class FSDS::FS::File < FSDS::FS
   #   FSDS::FS::File.new '/tmp/deleteme.txt', 755, 'joshaven'
   #   FSDS::FS::File.new '/tmp/deleteme.txt', 755, 'joshaven', 'staff'
   #   FSDS::FS::File.new '/tmp/deleteme.txt', nil, 'joshaven'     # The attributes are ordered, however they are ignored if nil.
-  def initialize(*args)
-    super *args
-    self.type = FSDS::FS::File if type.nil?
-  end
 
-  # Return or set the type of the FSDS.  The answer will be one of: the adapter types, or nil
-  # def type(klass = nil)
-  #   if klass.nil?
-  #     @type = ::File.file?(path || '') ? File : (::File.directory?(path || '') ? Dir : nil)
-  #   elsif Class === klass.class
-  #     @type = klass
-  #   else
-  #     nil
-  #   end
-  # end
-  
   # Create a file or directory on the filesystem if it doesn't already exist and set permissions, owner,
-  # & group if specified. See FSDS::new for full param options.  They type paramter is required and must be 
-  # one of: [:file, :dir].  Returns an FSDS instance.  See also the shortcut methods: :mkdir & :touch
-  #
+  # & group if specified. See FSDS::new for full param options.  Returns an FSDS instance.  See also the 
+  # shortcut methods: :mkdir & :touch
   #
   # Examples:
   #   p=FSDS.new  '/tmp/deleteme'         # This assumes that you have set: FSDS.default_adapter = FSDS::FS
@@ -57,7 +41,6 @@ class FSDS::FS::File < FSDS::FS
     #####
     
     cmd_prefix = options.has_key?(:sudo) ? "echo #{options[:sudo]}| sudo -S " : ''
-    my_type = self.type  # minimize access to File.file? & File.directory?
     
     # # Depreciate system call to touch in favor of writing nothing to the file through :concat!
     # raise("Could not touch file: #{path}") unless system_to_boolean("#{cmd_prefix} touch #{options[:arguments]} #{path}")
@@ -72,7 +55,7 @@ class FSDS::FS::File < FSDS::FS
   end
   alias_method :touch, :create!
   
-  # Returns true or false.  Shortcut method to: FSDS.new('/tmp').type != nil
+  # Returns true or false.
   #
   # Examples:
   #   FSDS.exists?("/tmp")           #=> true
@@ -199,7 +182,7 @@ end
 
 # register class methods with FSDS::FS
 ['touch', 'create!', "concat!", "concat", "<<", "size"].each do |meth|
-  FSDS::FS.register_upline_public_methods(meth, FSDS::FS::File)
+  FSDS::FS.register_downline_public_methods(meth, FSDS::FS::File)
 end
 
 

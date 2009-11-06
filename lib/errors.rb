@@ -10,4 +10,6 @@ module FSDS_Errors
   
   # This should be reaised when the filesystem cannot be written to.
   class WriteError < IOError; end
+  
+  class ConnectionError < IOError;end
 end

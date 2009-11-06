@@ -14,15 +14,11 @@ class FSDS::FS::Dir < FSDS::FS
   #   FSDS::FS::Dir.new '/tmp/deleteme/', 755, 'joshaven'
   #   FSDS::FS::Dir.new '/tmp/deleteme/', 755, 'joshaven', 'staff'
   #   FSDS::FS::Dir.new '/tmp/deleteme/', nil, 'joshaven'     # The attributes are ordered, however they are ignored if nil.
-  def initialize(*args)
-    super *args
-    self.type = FSDS::FS::Dir if type.nil?
-  end
+
   
   # Create a file or directory on the filesystem if it doesn't already exist and set permissions, owner,
-  # & group if specified. See FSDS::new for full param options.  They type paramter is required and must be 
-  # one of: [:file, :dir].  Returns an FSDS instance.  See also the shortcut methods: :mkdir & :touch
-  #
+  # & group if specified. See FSDS::new for full param options.  Returns an FSDS instance.  See also the 
+  # shortcut methods: :mkdir & :touch
   #
   # Examples:
   #   p=FSDS.new  '/tmp/deleteme'         # This assumes that you have set: FSDS.default_adapter = FSDS::FS
@@ -69,7 +65,7 @@ class FSDS::FS::Dir < FSDS::FS
     # File.makedirs path  # this would be great except that it doesn't support sudo
   end
   
-  # Returns true or false.  Shortcut method to: FSDS.new('/tmp').type != nil
+  # Returns true or false.
   #
   # Examples:
   #   FSDS.exists?("/tmp")           #=> true
@@ -99,11 +95,17 @@ class FSDS::FS::Dir < FSDS::FS
   end
 end
 
-# proxy instance methods as class methods
+# Proxy instance methods as class methods
 [ 'create!', 'mkdir!', 'mkdir', 'to_a', 'exists?', 'move', 'group', 'group!', 'group?', 'owner', 'owner!', 'owner?', 'destroy!', 'permissions', 'permissions!', 'permissions?'].each do |meth|
-  FSDS::FS::Dir.class_eval "def self.#{meth}(*args); self.new(*args).send(:#{meth}); end"
+  FSDS::FS::Dir.add_class_method meth do |*args|
+    self.new(*args).send(meth)
+  end
 end
 
+# Register class methods with FSDS::FS
+['mkdir', 'mkdir!', 'to_a'].each do |meth|
+  FSDS::FS.register_downline_public_methods(meth, FSDS::FS::Dir)
+end
 
 # The following will make a proxy method to the ::File class if the file class has the 
 # proper method.  The various if statements are for alternate formats of the paramaters.
@@ -147,7 +149,7 @@ end
   end
 end
 
-# proxy ::Dir instance methods 
+# proxy ::Dir instance methods
 ::Dir.instance_methods.each do |meth|
   case meth
   when *["close", "each", "path", "pos", "tell", "read", "rewind", "seek"]
@@ -155,8 +157,4 @@ end
       proxy(::Dir.new(path)).send meth, *args, &block
     end
   end
-end
-
-['mkdir', 'mkdir!', 'to_a'].each do |meth|
-  FSDS::FS.register_upline_public_methods(meth, FSDS::FS::Dir)
 end

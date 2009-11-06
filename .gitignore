@@ -19,4 +19,5 @@ rdoc
 pkg
 
 ## PROJECT::SPECIFIC
-spec/fixtures/aws.yml
+spec/fixtures/s3.yml
+spec/fixtures/*.pem
