@@ -12,8 +12,10 @@ system, or other data storage that can work like a file system, for document
 storage in a friendly way.  This gem has been tested & documented from the ground
 up so the testing and documentation should be pretty comprehensive.
 
-To begin with, I intend to support the local file systems as well as Amazon S3, and
-in compressed .tgz on either the filesystem or S3 interchangeably.
+To begin with, I intend to support "the local FileSystem", "Amazon S3", or "compressed files (.tgz)"
+as FileSystems.  Of course the compressed .tgz can reside on S3 or on your local file system 
+interchangeably. I would love to further the adapter types to include options like ssh connections, 
+webdev, etc. but that will not happen in the near future.
 
 == Mini-API
 You should be able to use the standard read & write methods regardless of the adapter 
@@ -74,6 +76,12 @@ Adapter standard methods should include:
   dir.exists?                 #=> false
 
 
+== Installation
+When things are finished up a bit I'll be releasing this as a gem.  For now you can check this project out 
+in your projects ./lib folder then be sure to include ./lib/fsds/lib/fsds.rb.  Assuming your lib is in your 
+gem path you would do: require('fsds/lib/fsds') but I'll leave that one up to you to figure out.  Enjoy and
+don't be afraid to contact me if you have any questions.
+
 == Note on Patches/Pull Requests
  
 * Fork the project.
@@ -85,17 +93,20 @@ Adapter standard methods should include:
    bump version in a commit by itself I can ignore when I pull)
 * Send me a pull request. Bonus points for topic branches.
 
-== Copyright
-
-Copyright (c) 2009 Joshaven Potter. See LICENSE for details.
-
 
 === Contributions
-    Anaheim       - Low (SR: 500 - 5,000)
-    Jalapeño      - Medium (SR: 2,500-8,000)
-    Serrano       - Hot (SR: 10,000-50,000)
-    Cayenne       - Hot (SR: 30,000-50,000)
-    Habanero      - Exceptionally Hot (SR: 100,000-350,000)
-    Naga Jolokia  - Peak (SR: 1,041,427)
+    Bell          - None (SR: 0)
+    Peperoncini   - Mild (SR: 500)
+    Anaheim       - Low (SR: 5,000)
+    Jalapeño      - Medium (SR: 8,000)
+    Serrano       - Hot (SR: 50,000)
+    Habanero      - Exceptionally Hot (SR: 350,000
+    Red Savina    - Crazy Hot (SR: 580,000)
+    Naga Jolokia  - Hottest (SR: 1,041,427)
+    ** SR = Scoville Rating
 
-If you find that this project is a Serrano or better, please consider donating...
+If you find that this project is a Jalapeño or better, please consider sending me a paypal donation...
+
+
+== Copyright
+Copyright (c) 2009 "Joshaven Potter" <yourtech@gmail.com>. See LICENSE for details.

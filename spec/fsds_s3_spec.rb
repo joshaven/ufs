@@ -4,32 +4,33 @@ describe 'FSDS::FS' do
   before :all do
     # @config_path = File.join( File.expand_path(File.dirname(__FILE__)), 'fixtures', 's3.yml' )
     @config_path = false unless FSDS::FS::File.exists? @config_path
+    
+    FSDS.default_adapter(FSDS::S3)
   end
-  before :each do
-    @s3 =  FSDS::S3.new
-    # @file = FSDS::S3::File.new @fn
-    # @bucket = FSDS::S3::Bucket.new @bn
+  after :all do
+    FSDS.disconnect!
   end
-  # after :each do
-  #   @file.destroy! if @file
-  #   # @bucket.destroy! if @bucket
-  # end
   
   it 'should instantize' do
-    FSDS.default_adapter(FSDS::S3).should == FSDS::S3
     FSDS.new.class.should == FSDS::S3
   end
   
   it 'should connect to S3 and disconnect' do
     if @config_path
-      # Without using the preset config using class methods
-      FSDS::S3.connect!(@config_path).should be_true
-      FSDS::S3.disconnect!.should be_true
-      # Test :connect! returning an instance that can be disconnected that has a preset config
-      FSDS::S3.config = @config_path
-      s3 = FSDS::S3.connect!
-      s3.should be_true
+      # Test :connect! without using the preset config using class methods
+      FSDS.connected?.should be_false
+      FSDS.connect!(@config_path)
+      FSDS.connected?.should be_true
+      
+      FSDS.disconnect!.should be_true
+      FSDS.connected?.should be_false
+      
+      # Test :connect! using preset config
+      FSDS.config = @config_path
+      s3 = FSDS.connect!
+      s3.connected?.should be_true
       s3.disconnect!.should be_true
+      s3.connected?.should be_false
     else
       s3 = mock('FSDS::S3', {
         'connected?'    => FSDS::S3.public_methods.include?('connected?'),
@@ -40,14 +41,23 @@ describe 'FSDS::FS' do
       s3.disconnect!.should be_true
     end
     # with bad connection info
-    (lambda {FSDS::S3.connect!({:access_key_id=>"boo-hoo", :secret_access_key=>"ya, right"})}).should raise_error(FSDS::ConnectionError)
+    (lambda {FSDS::S3.connect!({:access_key_id=>"boo-hoo", :secret_access_key=>"ThisTestShouldFail"})}).should raise_error(FSDS::ConnectionError)
   end
   
-  # it 'should respond to bucket class methods like: mkdir' do
-  #   if @config_path
-  #     # @s3.connect!
-  #     FSDS::S3.mkdir!('a').class.should == FSDS::S3::Bucket
-  #     FSDS::S3.exists?('a').should be_true
-  #   end
-  # end
+  it 'should be able to set the FSDS::S3.bucket=(bucket_name)' do
+    if @config_path
+      FSDS.config = @config_path
+      FSDS.connect!
+      name = "#{`whoami`.chomp}-FSDS-Test".downcase
+      lambda {AWS::S3::Bucket.find(name)}.should raise_error
+      FSDS.bucket = name
+      bucket = AWS::S3::Bucket.find(name)
+      bucket.to_s.should == name
+      Marshal.dump(bucket).should == Marshal.dump(FSDS.bucket)
+      AWS::S3::Bucket.current_bucket.should == name
+      FSDS.bucket.delete.should be_true
+    else
+      pending('Please configure spec/fixtures/s3.yml and uncomment the @config_path variable above')
+    end
+  end  
 end

@@ -10,6 +10,10 @@ class FSDS::S3::S3Object < FSDS::S3
     # ::AWS::S3::Bucket.delete(pth, :force=>true)
     raise 'method not complete!'
   end
+  def mkdir(pth)
+    
+  end
+  def mkdir!(pth)
 end
 
 
@@ -25,3 +29,5 @@ end
 ['touch'].each do |meth|
   FSDS::S3.register_downline_public_methods(meth, FSDS::S3::S3Object)
 end
+
+
