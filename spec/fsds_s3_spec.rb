@@ -16,7 +16,8 @@ describe 'FSDS::FS' do
   end
   
   it 'should connect to S3 and disconnect' do
-    if @config_path
+
+    if @config_path || !ENV['AMAZON_SECRET_ACCESS_KEY'].nil?
       # Test :connect! without using the preset config using class methods
       FSDS.connected?.should be_false
       FSDS.connect!(@config_path)
@@ -45,7 +46,7 @@ describe 'FSDS::FS' do
   end
   
   it 'should be able to set the FSDS::S3.bucket=(bucket_name)' do
-    if @config_path
+    if @config_path || !ENV['AMAZON_SECRET_ACCESS_KEY'].nil?
       FSDS.config = @config_path
       FSDS.connect!
       name = "#{`whoami`.chomp}-FSDS-Test".downcase

@@ -11,5 +11,9 @@ module FSDS_Errors
   # This should be reaised when the filesystem cannot be written to.
   class WriteError < IOError; end
   
+  # This should be raised when the filesystem cannot be connected to
   class ConnectionError < IOError;end
+  
+  # This should be raised when access is denied to the filesystem or filesystem object
+  class PermissionsError < IOError;end
 end

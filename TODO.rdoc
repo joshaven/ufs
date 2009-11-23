@@ -3,8 +3,8 @@ Conversions
 * Finish converting class_eval statements to add_instance_metod for proxy methods
   
 Features:
-* Support S3 datastore
-* Support .tgz datastore
+* Support S3 datastore (In process)
+* Support .tgz datastore (to be done)
   
 Finishing up:
 * Double check documentation of all methods

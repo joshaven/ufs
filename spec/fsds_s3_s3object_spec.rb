@@ -2,17 +2,63 @@ require File.join( File.expand_path(File.dirname(__FILE__)), 'spec_helper' )
 
 describe 'FSDS::S3::S3Object' do
   before :all do
-    # @config_path = File.join( File.expand_path(File.dirname(__FILE__)), 'fixtures', 's3.yml' )
-    @config_path = false unless FSDS::FS::File.exists? @config_path
+    @config_path          = File.join( File.expand_path(File.dirname(__FILE__)), 'fixtures', 's3.yml' )
+    FSDS.default_adapter  = FSDS::S3
+    @bn                   = 'test_fsds'
+    @fn                   = '/home/myself/delete me.txt'
+    # The FSDS::S3.config method only needs params if the Amazon environment variables are not set
+    FSDS::FS::File.exists?(@config_path) ? FSDS::S3.config = @config_path : @config_path = false
   end
-  before :each do
-    @s3 =  FSDS::S3.new
+
+  after :each do
+    FSDS.disconnect!
   end
-  # after :each do
-  # end
   
   it 'should instantize' do
     FSDS::S3::S3Object.new.class.should == FSDS::S3::S3Object
+    s3 = FSDS::S3::S3Object.new @fn
+    s3.path.should == @fn
+  end
+
+# #TODO: uncomment the following which is commented only to reduce traffic while testing other features:  
+  # it 'should raise a FSDS::ConnectionError when trying to communicate without setting a bucket name' do
+  #   lambda {FSDS.exists?('nil')}.should raise_error FSDS::ConnectionError
+  #   FSDS.bucket = @bn
+  #   FSDS.exists?('nil').should be_false
+  # end
+# #TODO: uncomment the following which is commented only to reduce traffic while testing other features:  
+  # it 'should disconnect!' do
+  #   lambda {FSDS.exists?('nil')}.should raise_error FSDS::ConnectionError
+  #   FSDS.bucket = @bn
+  #   FSDS.exists?('nil').should be_false
+  #   FSDS.disconnect!.should be_true
+  #   lambda {FSDS.exists?('nil')}.should raise_error FSDS::ConnectionError
+  #   FSDS.disconnect!.should be_true # Calling disconnect! should return true when there is no connection after method call.
+  # end
+# #TODO: uncomment the following which is commented only to reduce traffic while testing other features:  
+  # it 'should not blow up when the path is blank or non-existant' do
+  #   FSDS.exists?(nil).should be_false
+  #   FSDS.bucket = @bn
+  #   FSDS.exists?('nil').should be_false
+  # end
+
+  it 'should instantize when given an instance' do
+    s3 = FSDS::S3::S3Object.new 'Hello World.txt'
+    FSDS::new(s3).path.should == s3.path
+  end
+
+# TODO: uncomment the following which is commented only to reduce traffic while testing other features:
+  # it 'should be able to touch' do
+  #   FSDS.bucket = @bn
+  #   FSDS.exists?(@fn).should be_false
+  #   s3 = FSDS.touch(@fn)
+  #   s3.class.should == FSDS::S3::S3Object
+  #   s3.exists?.should be_true
+  #   s3.destroy!.should be_true
+  # end
+  
+  it 'should be able to read and write text files' do
+    
   end
 
   # Working example to write text to S3... 

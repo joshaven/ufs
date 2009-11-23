@@ -88,6 +88,8 @@ class FSDS::FS::File < FSDS::FS
     raise FSDS::WriteError unless exists?
     concat! data
   end
+  alias_method :<<, :concat
+  
   def concat!(data)
     begin
       ::File.open(path, 'a') { |f| f.print data.to_s }
@@ -96,8 +98,7 @@ class FSDS::FS::File < FSDS::FS
       raise FSDS::WriteError
     end
   end
-  alias_method :<<, :concat
-
+  
   # Return the content of a file from given start byte through the finish byte.  If finish byte is not given then the end
   # of the file is assumed.  
   #
