@@ -76,11 +76,29 @@ class FSDS
 
   # This stores an instance of the proxy object for any methods that are proxied to the
   # proxy object.  This saves on instantizing but more importantly, saves the state of
-  # the proxy object...
+  # the proxy object...  If object or force is set to true or :force then the proxy object
+  # is assigned regardless of the current state of the proxy object.
   #
-  # Use, for example: proxy(::File.new('/tmp/deleteme'))  in place of  ::File.new('/tmp/deleteme')
-  def proxy(obj)
-    @proxy_object ||= obj
+  # Important usage notes:
+  #   The proxy method accepts either an object or a block, if both are assigned only the block us run.
+  #
+  # Examples: 
+  #   proxy(::File.new('/tmp/deleteme'))  in place of  ::File.new('/tmp/deleteme')
+  #
+  #   proxy :force do
+  #     s3 = ::AWS::S3::S3Object.new
+  #     s3.key = key
+  #     s3.bucket = bucket
+  #     s3
+  #   end
+  def proxy(obj=nil, force=false, &block)
+    # The following compairisons are to circumvent issues arising when the object proxied is a AWS::S3::S3Object
+    #   AWS::S3::S3Objects cannot be compaired with == because it looks compairs ':path'... we are looking for true or :force exclusively
+    if force.is_a?(TrueClass) || obj.is_a?(TrueClass) || :force == force || :force == obj
+      @proxy_object = block.nil? ? obj : block.call
+    else
+      @proxy_object ||= block.nil? ? obj : block.call
+    end
   end
 private
   # The following allows an easy way to expand this objects Class methods without overwriting them.
