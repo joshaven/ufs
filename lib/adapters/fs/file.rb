@@ -103,7 +103,7 @@ class FSDS::FS::File < FSDS::FS
   # of the file is assumed.  
   #
   # Examples:
-  #   file = File::FS::File.touch '/tmp/deleteme.txt'
+  #   file = FSDS::FS::File.touch '/tmp/deleteme.txt'
   #   file << '0123456789abcdefghij'
   #   file.read_by_bytes(0,10)    #=> "0123456789" # Returns the 1st byte for 10 consecutive byte.
   #   file.read_by_bytes(10,10)   #=> "abcdefghij" # Returns from the 10th byte for 10 consecutive bytes.
@@ -114,6 +114,7 @@ class FSDS::FS::File < FSDS::FS
   #   file.read_by_bytes(-1)      # => "\n"
   #   file.read_by_bytes(1000, 1) # => RuntimeError: start byte is beyond the size of the file
   def read_by_bytes(start, finish = nil)
+    start, finish = start.first, start.last if start.is_a? Range
     raise 'start must be an Integer' unless Integer === start
     raise 'finish must be an Integer or nil' unless Integer === finish || NilClass === finish
 
