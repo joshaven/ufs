@@ -74,6 +74,16 @@ class FSDS
     end
   end
 
+  # Returns the path minus the location of the File or Dir.
+  #
+  # Examples:
+  #   FSDS::FS::File.new('/tmp/deleteme.txt').name  #=> "deleteme.txt"
+  #   FSDS::FS::Dir.new('/tmp/deleteme').name  #=> "deleteme"
+  #   FSDS::S3::S3Object.new('/tmp/deleteme.txt).name  #=> "deleteme.txt"
+  def name
+    path.split(::File::Separator).last
+  end
+
   # This stores an instance of the proxy object for any methods that are proxied to the
   # proxy object.  This saves on instantizing but more importantly, saves the state of
   # the proxy object...  If object or force is set to true or :force then the proxy object
@@ -99,6 +109,28 @@ class FSDS
     else
       @proxy_object ||= block.nil? ? obj : block.call
     end
+  end
+  
+  # Returns a string representation of a path from a string or array of strings.
+  # Does not automatically prepend a separator unless a hash is provided with a :prefix key.
+  # 
+  # Example:
+  #   f=FSDS.new
+  #   f.as_path 'path/to/some', 'world.txt'                               #=> "path/to/some/world.txt"
+  #   f.as_path 'path/to', 'some', 'world.txt'                            #=> "path/to/some/world.txt"
+  #   f.as_path '/path/', '/to/some//', '/', '/world.txt'                 #=> "/path/to/some/world.txt"
+  #   f.as_path 'path/to/some/world.txt', {:prefix => ::File::Separator}  #=> "/path/to/some/world.txt"
+  #   f.as_path 'path/to/some\world.txt', {:prefix => ::File::Separator}  #=> "/path/to/some/world.txt"
+  def as_path(*args)
+    # Strip any hashes out as options
+    options = {}
+    args.delete_if {|e| (options.merge!(e); true) if e.is_a?(Hash) }
+    # Assume prefix if a file separator is given as a prefix of the first argument
+    options[:prefix] ||= ::File::Separator if /^[\/|\\]/ === args.first
+    # Cleanup file separator to ensure it is according to the current O.S.
+    options[:prefix] = ::File::Separator if /[\/|\\]/ === options[:prefix]
+    # split by arguments & file separators then combine by file separators
+    options[:prefix].to_s + args.join(::File::Separator).split(/[\/|\\]/).collect {|s| s unless s.empty?}.compact.join(::File::Separator)
   end
 private
   # The following allows an easy way to expand this objects Class methods without overwriting them.

@@ -30,10 +30,10 @@ class FSDS::FS::Dir < FSDS::FS
   #   # If you need root access then send it a sudo:
   #   FSDS.create! :file, '/etc/deleteme', {:sudo => 'superSecretPassword'}
   def create!(pth=path, options={})
-    options, pth = pth, options if Hash === pth   # Swap arguments if arguments are backwards
-    pth = path if Hash === pth
+    options, pth = pth, options if pth.is_a? Hash   # Swap arguments if arguments are backwards
+    pth = path if pth.is_a? Hash
     
-    return false unless String === pth            # validate arg
+    return false unless pth.is_a? String            # validate arg
     path = pth                                    # ensure the path is set
     
     cmd_prefix = options.has_key?(:sudo) ? "echo #{options[:sudo]}| sudo -S " : ''

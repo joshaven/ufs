@@ -13,6 +13,6 @@ Finishing up:
   
 Ideas/questions/scratch_and_sniff:
 * Should any or all proxy methods return something other then the return status of the proxied method?
-  * String.should === FSDS.join()
+  * FSDS.join().is_a?(String).should be_true ???
   * FSDS.touch('/tmp/deleteme.txt').exist?.should be_true
 * Should there be a way to force proxy access?   FSDS::FS::File.proxy_this(:mkdir, '/tmp/deleteme')

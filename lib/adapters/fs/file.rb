@@ -34,10 +34,10 @@ class FSDS::FS::File < FSDS::FS
     #   pth,options = sort_path_and_options(pth, options)
     #####
     # from:
-    options, pth = pth, options if Hash === pth   # Swap arguments if arguments are backwards
-    pth = path if Hash === pth
-    return false unless String === pth            # validate arg
-    path = pth                                    # ensure the path is set
+    options, pth = pth, options if pth.is_a?(Hash)  # Swap arguments if arguments are backwards
+    pth = path if pth.is_a?(Hash)
+    return false unless pth.is_a?(String)           # validate arg
+    path = pth                                      # ensure the path is set
     #####
     
     cmd_prefix = options.has_key?(:sudo) ? "echo #{options[:sudo]}| sudo -S " : ''
@@ -90,6 +90,7 @@ class FSDS::FS::File < FSDS::FS
   end
   alias_method :<<, :concat
   
+  # Same as concat but will create a file if it doesn't exist instead of raising an error.
   def concat!(data)
     begin
       ::File.open(path, 'a') { |f| f.print data.to_s }
@@ -99,37 +100,53 @@ class FSDS::FS::File < FSDS::FS
     end
   end
   
-  # Return the content of a file from given start byte through the finish byte.  If finish byte is not given then the end
-  # of the file is assumed.  
+  # Return the content of a file from the given start byte continuing for the optional finish bytes.  
+  # If finish byte is not given then the return will include the remainder of the file.  If a negitive 
+  # start byte is given then the starting point is counted from the end of the file.  Furthermore a range
+  # of bytes may be given.  When a range is given the bytes included in the range will be returned.  Thus, 
+  # 5..10 is starting with byte 5 finishing five bytes later at byte 10 which is the same as (5,5).
+  #
+  # Arguments
+  #   start - Integer, The byte to begin reading from
+  #   length - Interger, The number of bytes to read
   #
   # Examples:
   #   file = FSDS::FS::File.touch '/tmp/deleteme.txt'
   #   file << '0123456789abcdefghij'
-  #   file.read_by_bytes(0,10)    #=> "0123456789" # Returns the 1st byte for 10 consecutive byte.
-  #   file.read_by_bytes(10,10)   #=> "abcdefghij" # Returns from the 10th byte for 10 consecutive bytes.
-  #   file.read_by_bytes(-10,10)  #=> "abcdefghij" # Returns, the 10th from last byte for 10 consecutive byptes.
-  #   file.read_by_bytes(-10)     #=> "abcdefghij" # Returns, the 10th from last byte through the end of the file.
-  #   file << "\n0123456789\n"
+  #   file.read_by_bytes(0..9)    #=> "0123456789"
+  #   file.read_by_bytes(5..14)   #=> "56789abcde"
+  #   file.read_by_bytes(0,10)    #=> "0123456789" # Returns 10 bytes beginning with the 1st byte.
+  #   file.read_by_bytes(10,10)   #=> "abcdefghij" # Returns 10 bytes beginning with the 10th byte.
+  #   file.read_by_bytes(-10,10)  #=> "abcdefghij" # Returns 10 bytes beginning with the 10th from last byte.
+  #   file.read_by_bytes(-10)     #=> "abcdefghij" # Returns returns the remainder of the bytes beginning with the 10th from the last byte.
+  #   file << "\n0123456789\n"    # file is now: "0123456789abcdefghij\n0123456789\n"
   #   file.read_by_bytes(-12,10)  # => "\n012345678"
   #   file.read_by_bytes(-1)      # => "\n"
   #   file.read_by_bytes(1000, 1) # => RuntimeError: start byte is beyond the size of the file
-  def read_by_bytes(start, finish = nil)
-    start, finish = start.first, start.last if start.is_a? Range
-    raise 'start must be an Integer' unless Integer === start
-    raise 'finish must be an Integer or nil' unless Integer === finish || NilClass === finish
+  def read_by_bytes(start, length = nil)
+    start, length = start.first, start.last-start.first+1 if start.is_a? Range
+    
+    raise 'start must be an Integer or a Range.' unless start.is_a?(Integer)
+    raise 'finish must be an Integer or nil.' unless length.is_a?(Integer) || length.is_a?(NilClass)
 
-    f = ::File.new(path)
-    size = ::File.size(path)
-    finish = size if finish.nil? || finish > size
-    raise 'start byte is beyond the size of the file' if start.abs > size
+    f = proxy :force do
+      ::File.new(path)
+    end
+    
+    s = size
+    raise FSDS::ReadError if s.nil?
+    length = s-start if length.nil? || length > s
+    raise 'start byte is beyond the size of the file' if start.abs > s
     f.seek(start, ((start < 0) ? IO::SEEK_END : IO::SEEK_SET) )
-    f.read(finish)
+    f.read(length)
   end
   
-  # Writes a string with an appended newline to to a file.    
+  # Writes a string with an appended newline to to a file.
   #
   # Example:
   #   f = FSDS.new 'path/to/file'
+  #   f.writeln "Line: 0"
+  #   f.writeln "Line: 1"
   #   f.read   #=> "Line: 0\nLine: 1\n"
   def writeln(data)
     if size > 0
@@ -161,11 +178,11 @@ class FSDS::FS::File < FSDS::FS
   #   f.readln(0..2)   #=> ["Line: 0", "Line: 1", "Line: 2"]
   def readln(line)
     begin
-      if Fixnum === line
+      if line.is_a? Fixnum
         str = ::File.readlines(path)[line]
-        String === str ? str.chomp : str
-      elsif Range === line
-        ::File.readlines(path)[line.first, line.last+1].collect {|str| str.chomp if String === str}
+        str.is_a?(String) ? str.chomp : str
+      elsif line.is_a? Range
+        ::File.readlines(path)[line.first, line.last+1].collect {|str| str.chomp if str.is_a?(String) }
       end
     rescue
       raise FSDS::ReadError
@@ -174,9 +191,7 @@ class FSDS::FS::File < FSDS::FS
 end
 
 # proxy instance methods as class methods
-[ 'exists?', 'create!', 'touch', 'read', 'size', 'bytes', 'destroy!', 'move', 
-  'group', 'group!', 'group?', 'owner', 'owner!', 'owner?', 
-  'permissions', 'permissions!', 'permissions?'].each do |meth|
+[ 'exists?', 'create!', 'touch', 'read', 'size', 'bytes', 'destroy!', 'move', 'group', 'group!', 'group?', 'owner', 'owner!', 'owner?', 'permissions', 'permissions!', 'permissions?'].each do |meth|
   FSDS::FS::File.add_class_method meth do |*args|
     self.new(*args).send(meth)
   end
@@ -197,7 +212,7 @@ end
 # can be extended through including ftools without any changes to the method proxies as 
 # long as that module is included prior to the instantation of the FSDS::FS::File object.
 
-# proxy ::File class methods 
+# proxy ::File class methods
 ::File.methods.each do |meth|
   case meth
   # Class proxy: () to ::File class method

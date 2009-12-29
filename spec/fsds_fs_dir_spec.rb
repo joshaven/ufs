@@ -13,12 +13,12 @@ describe 'FSDS::FS::Dir' do
   end
   
   it 'should instantize' do
-    FSDS::FS::Dir.should === FSDS::FS::Dir.new
+    FSDS::FS::Dir.new.is_a?(FSDS::FS::Dir).should be_true
   end
   
   it 'should be able to mkdir' do
-    FSDS::FS::Dir.should === @dir.mkdir
-    FSDS::FS::Dir.should === FSDS::FS::Dir.mkdir(@dn)
+    @dir.mkdir.is_a?(FSDS::FS::Dir).should be_true
+    FSDS::FS::Dir.mkdir(@dn).is_a?(FSDS::FS::Dir).should be_true
     lambda {FSDS::FS::Dir.mkdir('/tmp/does_not_exist/deleteme')}.should raise_error(FSDS::WriteError)
   end
   
@@ -48,7 +48,7 @@ describe 'FSDS::FS::Dir' do
   it 'should be able to move' do
     @dir.destroy!("~/#{@dn}")
     @dir.mkdir.should be_true
-    FSDS::FS::Dir.should === @dir.move('~')
+    @dir.move('~').is_a?(FSDS::FS::Dir).should be_true
     @dir.path.should == File.expand_path("~/#{@dir.name}")
     @dir.destroy!.should be_true
   end

@@ -34,10 +34,10 @@ describe 'FSDS' do
   end
   
   it 'instantization should give you an instance of the default adapter or FSDS if no default_adapter is set' do
-    FSDS.should === FSDS.new
+    FSDS.new.is_a?(FSDS).should be_true
     if defined?(FSDS::FS)
       FSDS.default_adapter=(FSDS::FS)
-      FSDS::FS.should === FSDS.new
+      FSDS::FS.new.is_a?(FSDS).should be_true
       
       # The following ensures that the attributes are passed through.  Although it makes some 
       # assumptions about the object being tested which *should* be outside the scope of this test
@@ -46,7 +46,7 @@ describe 'FSDS' do
     
     if defined?(FSDS::S3)
       FSDS.default_adapter=(FSDS::S3)
-      FSDS::S3.should === FSDS.new
+      FSDS.new.is_a?(FSDS::S3).should be_true
     end
   end
   
@@ -56,5 +56,15 @@ describe 'FSDS' do
     FSDS.default_adapter=(FSDS::FS)
     FSDS::FS::File.should == FSDS::FS::File
     FSDS::FS::File.new.class.should == FSDS::FS::File
+  end
+
+  it 'should make paths from path fragments' do
+    f = FSDS.new
+    f.as_path('tmp', '/hello').should == 'tmp/hello'
+    f.as_path('tmp', '/hello', {:prefix => '/'}).should == '/tmp/hello'
+    f.as_path('tmp', '/hello', {:prefix => '\\'}).should == '/tmp/hello'
+    f.as_path('/tmp//hello.txt').should == '/tmp/hello.txt'
+    f.as_path('///tmp///hello.txt').should == '/tmp/hello.txt'
+    
   end
 end

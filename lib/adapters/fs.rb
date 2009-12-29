@@ -20,7 +20,7 @@ class FSDS::FS < FSDS
   #   FSDS::FS::Dir.new(dir).path == dir.path                 #=> true
   def initialize(pth=nil, priv=nil, own=nil, grp=nil)
     # duplicat instance if initilize is called with an instance as the first argument
-    if FSDS::FS::File === pth || FSDS::FS::Dir === pth
+    if pth.is_a?(FSDS::FS::File) || pth.is_a?(FSDS::FS::Dir)
       priv  = pth.permissions
       own   = pth.owner
       grp   = pth.group
@@ -60,7 +60,7 @@ class FSDS::FS < FSDS
   # :name, :permissions, :owner, :group, :size, :modified, :mkdird, :subordinates  (subordinates are number of items contained)
   def proprieties
     begin
-      looking_for = (self === Dir ? '.' : path)
+      looking_for = (self.is_a?(Dir) ? '.' : path)
       file = ::File.new(path)
       `ls -alT #{path}`.split("\n").collect { |line| # itterate through each line of the ls results looking for our record
         i = line.split(' ')
@@ -106,10 +106,10 @@ class FSDS::FS < FSDS
   #
   # FIXME:  This is not cross platform, it relys on chmod & posix permissions
   def permissions!(arg=permissions, options={})
-    options, arg = arg, options if Hash === arg     # Swap arguments if arguments seem to be backward
+    options, arg = arg, options if arg.is_a? Hash     # Swap arguments if arguments seem to be backward
     arg = permissions if Hash == arg               # in the event that only options are given
 
-    return false unless Fixnum === arg && /[0-7]{3}/ === arg.to_s # validate arg
+    return false unless arg.is_a?(Fixnum) && /[0-7]{3}/ === arg.to_s # validate arg
     permissions(arg)
     
     unless permissions.nil? || permissions? == permissions  # only proceed if there is something to do
@@ -163,13 +163,13 @@ class FSDS::FS < FSDS
   #
   # FIXME:  This is not cross platform, it relys on chown
   def owner!(arg=owner, options={})
-    options, arg = arg, options if Hash === arg && !arg.empty?  # Swap arguments if arguments seem to be backward
-    arg = owner if Hash === arg
+    options, arg = arg, options if arg.is_a?(Hash) && !arg.empty?  # Swap arguments if arguments seem to be backward
+    arg = owner if arg.is_a? Hash
     
-    return false unless String === arg                          # validate arg
+    return false unless arg.is_a? String                          # validate arg
     owner = arg
     
-    return false if owner.nil? || !(Hash === options)
+    return false if owner.nil? || !(options.is_a? Hash)
     system_to_boolean "#{'echo '+options[:sudo]+'|sudo -S ' if options.has_key?(:sudo)}chown #{options[:arguments]} #{owner} #{path}" unless path.nil? || owner.nil?
   end
   
@@ -207,10 +207,10 @@ class FSDS::FS < FSDS
   #
   # FIXME:  This is not cross platform, it relys on chmod & posix permissions
   def group!(arg=group, options={})
-    options, arg = arg, options if Hash === arg && !arg.empty?  # Swap arguments if arguments seem to be backward
-    arg = group if Hash === arg                                 # in the event that only options are given
+    options, arg = arg, options if arg.is_a?(Hash) && !arg.empty?  # Swap arguments if arguments seem to be backward
+    arg = group if arg.is_a? Hash                                 # in the event that only options are given
     
-    return false unless String === arg                          # validate arg
+    return false unless arg.is_a? String                          # validate arg
     group(arg)
     begin
       if options.has_key? :sudo
@@ -222,7 +222,7 @@ class FSDS::FS < FSDS
       false
     end
   end
-  
+
   # Removes FSDS from filesystem, returning true if successful or false if unsuccessful.
   #
   # Options:
@@ -245,16 +245,7 @@ class FSDS::FS < FSDS
       false
     end
   end
-  
-  # Returns the path minus the location of the File or Dir.
-  #
-  # Examples:
-  #   FSDS::FS::File.new('/tmp/deleteme.txt').name  #=> "deleteme.txt"
-  #   FSDS::FS::Dir.new('/tmp/deleteme').name  #=> "deleteme"
-  def name
-    path.split(::File::Separator).last
-  end
-  
+
   # Move file or directory from current location to given location
   #
   # Examples:
@@ -262,7 +253,7 @@ class FSDS::FS < FSDS
   #   f.move '~'                                      # Moves the file 'f' to the home dir and returns self
   #   f.path                                          #=> "/home/username/deleteme.txt"   # this is relitive to your path... '~'
   def move(new_location, options={})
-    if String === new_location
+    if new_location.is_a? String
       new_location = ::File.expand_path(new_location) + ::File::Separator
       raise FSDS::WriteError if ::File.exists?(new_location + name)
       begin
@@ -277,7 +268,7 @@ class FSDS::FS < FSDS
     end
     return self
   end
-  
+
   def self.method_missing(sym, *args, &block)
     if FSDS::FS::File.public_methods.include?(sym.to_s)
       FSDS::FS::File.send(sym, *args, &block) unless FSDS::FS::Dir.public_methods.include?(sym.to_s)
@@ -287,7 +278,7 @@ class FSDS::FS < FSDS
       super
     end
   end
-  
+
 private
   # This returns true or false when evaluating a system command.
   def system_to_boolean(str)

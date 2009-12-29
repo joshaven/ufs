@@ -17,7 +17,7 @@ describe 'FSDS::FS::File' do
   
   it 'should instantize' do
     FSDS::FS.should be_true
-    FSDS::FS::File.should === FSDS::FS::File.new
+    FSDS::FS::File.new.is_a?(FSDS::FS::File).should be_true
   end
 
   it 'should not blow up when the path is blank' do
@@ -29,8 +29,9 @@ describe 'FSDS::FS::File' do
   end
   
   it 'should be able to touch' do
-    FSDS::FS::File.should === FSDS::FS::File.touch(@fn)
-    FSDS::FS::File.should === @file.touch
+    FSDS::FS::File.touch(@fn).is_a?(FSDS::FS::File).should be_true
+    @file.touch.is_a?(FSDS::FS::File).should be_true
+    @file.exists?.should be_true
   end
   
   it 'should answer exists?' do
@@ -69,10 +70,10 @@ describe 'FSDS::FS::File' do
   
   it 'should handle :permissions permissions? permissions!' do
     passwd = FSDS::FS::File.new('/etc/passwd')
-    passwd.permissions?.should === 644
+    passwd.permissions?.should == 644
     
     f = FSDS::FS::File.touch '~/deleteme.txt'
-    Integer.should === f.permissions?
+    f.permissions?.is_a?(Integer).should be_true
     f.permissions?.should_not == 777
     f.permissions!(777).should be_true
     f.permissions?.should == 777
@@ -108,8 +109,8 @@ describe 'FSDS::FS::File' do
   end
   
   it 'should return self when writing to a file or raise an error' do
-    FSDS::FS::File.should === @file.concat!('Hello')
-    FSDS::FS::File.should === (@file << ' world')
+    @file.concat!('Hello').is_a?(FSDS::FS::File).should be_true
+    (@file << ' world').is_a?(FSDS::FS::File).should be_true
     @file.destroy!.should be_true
     (lambda { @file << 'hello' }).should raise_error(FSDS::WriteError)
   end
@@ -149,10 +150,17 @@ describe 'FSDS::FS::File' do
   it 'should :read_by_byte start, finish' do
     @file.touch
     @file << '0123456789'
+    # read given only a starting point
     @file.read_by_bytes(0).should == '0123456789'
     @file.read_by_bytes(1).should == '123456789'
+    # read given a start byte the number of bytes to finish at
+    @file.read_by_bytes(2,2).should == '23'
+    # read given a negitive number (back from the end)
     @file.read_by_bytes(-2).should == '89'
     @file.read_by_bytes(-3, 1).should == '7'
+    # read given a range
+    @file.read_by_bytes(1..3).should == '123'
+    
     @file.destroy!
     @file.touch
     @file << "0123456789\n123\n"
@@ -168,7 +176,7 @@ describe 'FSDS::FS::File' do
   it 'should be able to move' do
     @file.destroy!("~/#{@fn}")
     @file.touch.should be_true
-    FSDS::FS::File.should === @file.move('~')
+    @file.move('~').is_a?(FSDS::FS::File).should be_true
     @file.path.should == File.expand_path("~/#{@file.name}")
     @file.destroy!.should be_true
   end

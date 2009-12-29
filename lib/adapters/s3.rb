@@ -6,12 +6,12 @@ require 'uri'
 require File.join(File.expand_path(File.dirname(__FILE__)), '..', 'fsds') unless defined?(FSDS)
 
 class FSDS::S3 < FSDS
-  attr_accessor :path, :permissions, :owner, :group
+  attr_accessor :path, :permissions, :owner, :group, :buckets
   cattr_accessor :config
   
   def initialize(pth=nil, priv=nil, own=nil, grp=nil)
     # duplicat instance if initilize is called with an instance as the first argument
-    if FSDS::S3::S3Object === pth
+    if pth.is_a? FSDS::S3::S3Object
       priv  = pth.permissions
       own   = pth.owner
       grp   = pth.group
@@ -34,14 +34,14 @@ class FSDS::S3 < FSDS
   #   FSDS::S3.bucket = 'something_unique'   # This will set your current bucket to 'something_unique'
   #   
   def self.bucket=(name)
+    connect! unless connected?
     return @bucket if @bucket.to_s == name
     
     @bucket = begin
       ::AWS::S3::Bucket.find name
     rescue ::AWS::S3::NoConnectionEstablished
       connect!
-      untried = untried ? raise(::FSDS::ConnectionError) : true
-      retry
+      retry if first_time = first_time ? false : true
     rescue AWS::S3::NoSuchBucket
       ::AWS::S3::Bucket.create(name)
       ::AWS::S3::Bucket.find name
@@ -90,11 +90,16 @@ class FSDS::S3 < FSDS
     if credentials.nil? && !ENV['AMAZON_ACCESS_KEY_ID'].nil? && !ENV['AMAZON_SECRET_ACCESS_KEY'].nil?
       credentials = {:access_key_id => ENV['AMAZON_ACCESS_KEY_ID'], :secret_access_key => ENV['AMAZON_SECRET_ACCESS_KEY']}
     end
-    
     unless connected?
       begin
-        FSDS::S3.establish_connection!(Hash === credentials ? credentials : YAML::load(FSDS::FS.read(credentials)))
-      rescue; raise FSDS::ConnectionError; end
+        FSDS::S3.establish_connection!(credentials.is_a?(Hash) ? credentials : YAML::load(FSDS::FS.read(credentials)))
+        # The following is important to rais connection errors if provided key or secret is invalid because the 
+        # :establish_connection! method only makes a connection but doesn't communicate over it.
+        buckets = AWS::S3::Service.buckets
+      rescue;
+        FSDS::S3.disconnect!
+        raise FSDS::ConnectionError
+      end
     end
     self
   end
@@ -102,10 +107,10 @@ class FSDS::S3 < FSDS
   # Returns true/false or raises FSDS::IOError
   def disconnect!
     begin
-      connected? ? ::AWS::S3::Base.disconnect! : true
+      ::AWS::S3::Base.disconnect! if connected?
+      return !connected?
     rescue; raise FSDS::IOError; end
   end
-
 private
   def acl_to_integer(permissions)
     # default: {owner => self, group => s3_users, everyone => all}

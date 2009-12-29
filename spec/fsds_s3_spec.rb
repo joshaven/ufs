@@ -2,12 +2,16 @@ require File.join( File.expand_path(File.dirname(__FILE__)), 'spec_helper' )
 
 describe 'FSDS::FS' do
   before :all do
-    # @config_path = File.join( File.expand_path(File.dirname(__FILE__)), 'fixtures', 's3.yml' )
-    @config_path = false unless FSDS::FS::File.exists? @config_path
-    
-    FSDS.default_adapter(FSDS::S3)
+    @config_path          = File.join( File.expand_path(File.dirname(__FILE__)), 'fixtures', 's3.yml' )
+    FSDS.default_adapter  = FSDS::S3
+    @bn                   = 'test_fsds'
+    # The FSDS::S3.config method only needs params if the Amazon environment variables are not set
+    FSDS::FS::File.exists?(@config_path) ? FSDS::S3.config = @config_path : @config_path = false
   end
-  after :all do
+  before :each do
+    FSDS.disconnect!
+  end
+  after :each do
     FSDS.disconnect!
   end
   
@@ -16,7 +20,9 @@ describe 'FSDS::FS' do
   end
   
   it 'should connect to S3 and disconnect' do
-
+    # with bad connection info
+    (lambda {FSDS::S3.connect!({:access_key_id=>"boo-hoo", :secret_access_key=>"ThisTestShouldFail"})}).should raise_error(FSDS::ConnectionError)
+        
     if @config_path || !ENV['AMAZON_SECRET_ACCESS_KEY'].nil?
       # Test :connect! without using the preset config using class methods
       FSDS.connected?.should be_false
@@ -41,8 +47,6 @@ describe 'FSDS::FS' do
       s3.connect!(@config_path).should be_true
       s3.disconnect!.should be_true
     end
-    # with bad connection info
-    (lambda {FSDS::S3.connect!({:access_key_id=>"boo-hoo", :secret_access_key=>"ThisTestShouldFail"})}).should raise_error(FSDS::ConnectionError)
   end
   
   it 'should be able to set the FSDS::S3.bucket=(bucket_name)' do
