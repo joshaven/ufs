@@ -6,7 +6,7 @@ require 'uri'
 require File.join(File.expand_path(File.dirname(__FILE__)), '..', 'fsds') unless defined?(FSDS)
 
 class FSDS::S3 < FSDS
-  attr_accessor :path, :permissions, :owner, :group, :buckets
+  attr_accessor :permissions, :owner, :group, :buckets
   cattr_accessor :config
   
   def initialize(pth=nil, priv=nil, own=nil, grp=nil)

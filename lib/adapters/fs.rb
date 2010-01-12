@@ -1,7 +1,7 @@
 require File.join(File.expand_path(File.dirname(__FILE__)), '..', 'fsds') unless defined?(FSDS)
 
 class FSDS::FS < FSDS
-  attr_accessor :path, :permissions, :owner, :group
+  attr_accessor :permissions, :owner, :group
   
   # Retuns a FSDS adapter instance (File System Object).  The path, permissions, ownership & group can be 
   # specified as attributes. The filesystem is not touched by this method.  The methods that 

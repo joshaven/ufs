@@ -1,8 +1,10 @@
 require File.join(File.expand_path(File.dirname(__FILE__)), 'metaclass') unless defined?(Object.metaclass)
 require File.join(File.expand_path(File.dirname(__FILE__)), 'errors') unless defined?(FSDS_Errors)
+require File.join(File.expand_path(File.dirname(__FILE__)), 'string_ext') unless String.methods.include? 'constantize'
 
 class FSDS
   include FSDS_Errors
+  attr_accessor :path
   
   # For FSDS.new only: returns an instance of the default_adapter or self if no default_adapter has been specified
   def self.new(*args, &block)
