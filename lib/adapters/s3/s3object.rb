@@ -73,6 +73,27 @@ class FSDS::S3::S3Object < FSDS::S3
     end
   end
   
+  # Returns a line as a String or a range of lines as an Array.  Given a 10 line file, the first line would be 0 and 
+  # the last line would be 9. Represented as a range this would be: file.readln(0..9)
+  # 
+  # Examples:
+  #   f = FSDS.new 'path/to/file'
+  #   f.readln 0   #=> "Line: 0"
+  #   f.readln(0..2)   #=> ["Line: 0", "Line: 1", "Line: 2"]
+  def readln(line)
+    begin
+      if line.is_a? Fixnum
+        str = ::File.readlines(path)[line]
+        str.is_a?(String) ? str.chomp : str
+      elsif line.is_a? Range
+        ::File.readlines(path)[line.first, line.last+1].collect {|str| str.chomp if str.is_a?(String) }
+      end
+    rescue
+      raise FSDS::ReadError
+    end
+  end
+  
+  
   # Writes a string with an appended newline to to a file.
   #
   # Example:
@@ -81,7 +102,6 @@ class FSDS::S3::S3Object < FSDS::S3
   #   f.writeln "Line: 1"
   #   f.read   #=> "Line: 0\nLine: 1\n"
   def write(data, options = {:bucket_name => FSDS::S3.bucket.to_s})
-    # ::AWS::S3::S3Object.store path, data, options.delete(:bucket_name), options
     s3 = initiate(options)
     s3.value = data
     if s3.store
@@ -114,10 +134,11 @@ class FSDS::S3::S3Object < FSDS::S3
   def move(new_location, options={})
     raise "The first paramater must be a String representation of the path to the new location." unless new_location.is_a? String
     
-    new_location = new_location + name unless new_location.split(::File::Separator).last == name
-    raise FSDS::WriteError if ::File.exists?(new_location + name)
+    new_location = as_path(new_location, name) unless new_location.split(::File::Separator).last == name
+    raise FSDS::WriteError if ::File.exists?(new_location)
     begin
-      vassal(options).key = as_path(new_location, false)
+      vassal(options).key = as_path(new_location)
+      self.path = vassal.key
     rescue
       raise FSDS::IOError
     end
@@ -212,14 +233,13 @@ private
   
   # Returns a new S3Object with the given key name and given or implied bucket.
   # The key must be a string or support the .to_s method
-  # The bucket is optional, if supplied it must be a AWS::S3::Bucket
+  # The bucket is optional as long as the defult bucket has been set.
+  # If a bucket is supplied it must be a AWS::S3::Bucket not the name of a bucket.
   def new_s3object(key, bucket = FSDS::S3.bucket)
-    # proxy :force do
-      s3 = ::AWS::S3::S3Object.new
-      s3.key = key.to_s
-      s3.bucket = bucket
-      s3
-    # end
+    s3 = ::AWS::S3::S3Object.new
+    s3.key = key.to_s
+    s3.bucket = bucket
+    s3
   end
 end
 
