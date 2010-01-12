@@ -3,20 +3,17 @@ require 'rake'
 
 begin
   require 'jeweler'
-  Jeweler::Tasks.new do |gem|
-    gem.name = "fsds"
-    gem.summary = %Q{Use your File System As a Data Store}
-    gem.description = %Q{TODO: longer description of your gem}
-    gem.email = "yourtech@gmail.com"
-    gem.homepage = "http://github.com/joshaven/fsds"
-    gem.authors = ["Joshaven Potter"]
-    gem.rubyforge_project = "fsds"
-    gem.add_development_dependency "rspec", ">= 1.2.9"
-    # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
+  Jeweler::Tasks.new do |gemspec|
+    gemspec.name = "fsds"
+    gemspec.summary = %Q{Use your File System As a Data Store}
+    gemspec.description = %Q{TODO: longer description of your gem}
+    gemspec.email = "yourtech@gmail.com"
+    gemspec.homepage = "http://github.com/joshaven/fsds"
+    gemspec.authors = ["Joshaven Potter"]
+    gemspec.add_development_dependency "rspec", ">= 1.2.9"
+    # gemspec is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
   end
-  Jeweler::RubyforgeTasks.new do |rubyforge|
-    rubyforge.doc_task = "rdoc"
-  end
+  Jeweler::GemcutterTasks.new
 rescue LoadError
   puts "Jeweler (or a dependency) not available. Install it with: sudo gem install jeweler"
 end
@@ -25,12 +22,14 @@ require 'spec/rake/spectask'
 Spec::Rake::SpecTask.new(:spec) do |spec|
   spec.libs << 'lib' << 'spec'
   spec.spec_files = FileList['spec/**/*_spec.rb']
+  ## FIXME: Need cucumber files too, I am sure.
 end
 
 Spec::Rake::SpecTask.new(:rcov) do |spec|
   spec.libs << 'lib' << 'spec'
   spec.pattern = 'spec/**/*_spec.rb'
   spec.rcov = true
+  ## FIXME: Need cucumber files too, I am sure.
 end
 
 task :spec => :check_dependencies
@@ -46,3 +45,13 @@ Rake::RDocTask.new do |rdoc|
   rdoc.rdoc_files.include('README*')
   rdoc.rdoc_files.include('lib/**/*.rb')
 end
+
+
+# Feature Testing >>>
+begin
+  require 'cucumber/rake/task'
+  Cucumber::Rake::Task.new(:features)
+rescue LoadError
+  puts "Cucumber is not available. In order to run features, you must: sudo gem install cucumber"
+end
+# <<< Feature Testing

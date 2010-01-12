@@ -1,0 +1,30 @@
+Story 'Ensure universal API for files and folders',
+# 'As a savings account holder I want to transfer money from my savings account So that I can get cash easily from an ATM' do
+'I want to read, write, & modify files and directories consistently across multiple technologies' do
+  Scenario 'Touch to a non-existent file on the file system' do
+    Given 'a file name of', '/tmp/delete me.txt' do |expectation|
+      @fn = expectation
+    end
+    And 'a default adapter' FSDS::FS do |adapter|
+      FSDS.default_adapter = adapter
+    end
+    When 'I touch the file' do
+      @file.touch
+    end
+    Then 'my file should exist.', do
+      @file.exists?.should be_true
+    end
+    And 'I should cleanup the filesystem by destroying the file.' do
+      @file.destroy!.should be_true
+    end
+  end
+
+  Scenario 'Touch to a non-existent file on S3' do
+    Given 'a file name of', '/tmp/delete me.txt'
+    And 'a default adapter' FSDS::FS
+    When 'I touch the file'
+    Then 'my file should exist.'
+    And 'I should cleanup the filesystem by destroying the file.'
+  end
+
+end
