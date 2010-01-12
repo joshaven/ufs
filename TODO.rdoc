@@ -1,18 +1,25 @@
-Conversions
-* Finish converting class_eval statements to add_class_method for proxy methods
-* Finish converting class_eval statements to add_instance_metod for proxy methods
-  
+Consider changing name from FSDS to: "UFS - The Unified File Systems Gem"
+
+
+RDocs: Create standard fs methods doc file in FSDS and remove anything from individual adapters... 
+  - Probably move ALL methods to FSDS and allow the adapters to overwrite methods where needed.
+
+Specs: Create an API test file(s) that can be run on all adapter types and import the tests in each 
+specific adapter test file for consistent API testing
+
 Features:
 * Support S3 datastore (In process)
 * Support .tgz datastore (to be done)
+* Support git datastore, or other (differential/versioned datastore) (to be considered)
   
 Finishing up:
 * Double check documentation of all methods
 * Insure that at least one example of every proxy instance & class method is tested from the groups at the bottom of file.rb & dir.rb... Where possible test passing of blocks, etc.
-* Double check that all methods either work with binary files or are specifically text methods.
+* Double check that all methods either work with binary files or are specifically text only methods.
   
 Ideas/questions/scratch_and_sniff:
 * Should any or all proxy methods return something other then the return status of the proxied method?
   * FSDS.join().is_a?(String).should be_true ???
   * FSDS.touch('/tmp/deleteme.txt').exist?.should be_true
-* Should there be a way to force proxy access?   FSDS::FS::File.proxy_this(:mkdir, '/tmp/deleteme')
+* Should there be a way to force proxy access?   done => FSDS::FS::File.proxy.mkdir '/tmp/deleteme'
+* Should  blocking I/O methods be asynchronous capable?  @file.write(data, :async => true)
