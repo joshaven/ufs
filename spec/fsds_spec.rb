@@ -23,7 +23,7 @@ describe 'FSDS' do
   it 'should be able to get and set the default_adapter' do
     FSDS.default_adapter.should be_nil
     # Set and default_adapter
-    FSDS.default_adapter=(FSDS).should be_true
+    (FSDS.default_adapter=FSDS).should be_true
     # Read default_adapter
     FSDS.default_adapter.should == FSDS
     

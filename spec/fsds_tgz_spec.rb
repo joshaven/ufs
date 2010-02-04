@@ -14,8 +14,8 @@ describe 'FSDS::FS' do
   #   # @bucket.destroy! if @bucket
   # end
   
-  it 'should instantize' do
-    FSDS.default_adapter = FSDS::TGZ
-    FSDS.new.class.should == FSDS::TGZ
-  end
+  # it 'should instantize' do
+  #   FSDS.default_adapter = FSDS::TGZ
+  #   FSDS.new.class.should == FSDS::TGZ
+  # end
 end
