@@ -3,15 +3,15 @@ require 'aws/s3'
 require 'yaml'
 require 'uri'
 
-require File.join(File.expand_path(File.dirname(__FILE__)), '..', 'fsds') unless defined?(FSDS)
+require File.join(File.expand_path(File.dirname(__FILE__)), '..', 'ufs') unless defined?(UFS)
 
-class FSDS::S3 < FSDS
+class UFS::S3 < UFS
   attr_accessor :permissions, :owner, :group, :buckets
   cattr_accessor :config
   
   def initialize(pth=nil, priv=nil, own=nil, grp=nil)
     # duplicat instance if initilize is called with an instance as the first argument
-    if pth.is_a? FSDS::S3::S3Object
+    if pth.is_a? UFS::S3::S3Object
       priv  = pth.permissions
       own   = pth.owner
       grp   = pth.group
@@ -31,7 +31,7 @@ class FSDS::S3 < FSDS
   # attempt to create this bucket.
   #
   # Example:
-  #   FSDS::S3.bucket = 'something_unique'   # This will set your current bucket to 'something_unique'
+  #   UFS::S3.bucket = 'something_unique'   # This will set your current bucket to 'something_unique'
   #   
   def self.bucket=(name)
     connect! unless connected?
@@ -50,14 +50,14 @@ class FSDS::S3 < FSDS
       # This should only be rescuing AWS::S3::AccessDenied but when you try to search for the 'test' bucket 
       # you get a NotSignedUp error instead of an Access Denied
       if /AWS::S3::AccessDenied|AWS::S3::NotSignedUp/ === e.class.to_s
-        raise ::FSDS::PermissionsError
+        raise ::UFS::PermissionsError
       else
-        raise FSDS::ConnectionError
+        raise UFS::ConnectionError
       end
     end
     AWS::S3::Bucket.set_current_bucket_to name
 
-    raise FSDS::ConnectionError unless ::AWS::S3::Bucket.current_bucket == name
+    raise UFS::ConnectionError unless ::AWS::S3::Bucket.current_bucket == name
     return @bucket
   end
   # Returns current bucket object.
@@ -68,48 +68,48 @@ class FSDS::S3 < FSDS
   # Setup the authentication information for the Amazon S3 connection.  Accepts a path via a string.
   #
   # Example:
-  #   FSDS::S3.config = File.join(APP_ROOT, 'config', 's3.yml')
+  #   UFS::S3.config = File.join(APP_ROOT, 'config', 's3.yml')
   # def self.config(file = :notset)
   #   @connection_configuration = file unless file == :notset
   #   @connection_configuration ||= nil
   # end
   
-  # Establishes a connection to Amazon S3 or raises FSDS::ReadError.  The read error will indicate
+  # Establishes a connection to Amazon S3 or raises UFS::ReadError.  The read error will indicate
   # that either the config_file is invalid either in format or in content, which is most likely,
   # or that the AWS::S3 connection failed even when given valid content.
   #
   # Example:
-  #   FSDS.default_adapter = FSDS::S3
-  #   FSDS.config File.join(APP_ROOT, 'config', 's3.yml')
-  #   FSDS.connect!
+  #   UFS.default_adapter = UFS::S3
+  #   UFS.config File.join(APP_ROOT, 'config', 's3.yml')
+  #   UFS.connect!
   #   # or by sending a Hash
-  #   FSDS::S3.connect! {:access_key_id => "abc", :secret_access_key => "123"}
+  #   UFS::S3.connect! {:access_key_id => "abc", :secret_access_key => "123"}
   #   # or by sending a path
-  #   FSDS::S3.connect! File.join(APP_ROOT, 'config', 's3.yml')
-  def connect!(credentials = FSDS::S3.config)
+  #   UFS::S3.connect! File.join(APP_ROOT, 'config', 's3.yml')
+  def connect!(credentials = UFS::S3.config)
     if credentials.nil? && !ENV['AMAZON_ACCESS_KEY_ID'].nil? && !ENV['AMAZON_SECRET_ACCESS_KEY'].nil?
       credentials = {:access_key_id => ENV['AMAZON_ACCESS_KEY_ID'], :secret_access_key => ENV['AMAZON_SECRET_ACCESS_KEY']}
     end
     unless connected?
       begin
-        FSDS::S3.establish_connection!(credentials.is_a?(Hash) ? credentials : YAML::load(FSDS::FS.read(credentials)))
+        UFS::S3.establish_connection!(credentials.is_a?(Hash) ? credentials : YAML::load(UFS::FS.read(credentials)))
         # The following is important to rais connection errors if provided key or secret is invalid because the 
         # :establish_connection! method only makes a connection but doesn't communicate over it.
         buckets = AWS::S3::Service.buckets
       rescue;
-        FSDS::S3.disconnect!
-        raise FSDS::ConnectionError
+        UFS::S3.disconnect!
+        raise UFS::ConnectionError
       end
     end
     self
   end
   
-  # Returns true/false or raises FSDS::IOError
+  # Returns true/false or raises UFS::IOError
   def disconnect!
     begin
       ::AWS::S3::Base.disconnect! if connected?
       return !connected?
-    rescue; raise FSDS::IOError; end
+    rescue; raise UFS::IOError; end
   end
 private
   def acl_to_integer(permissions)
@@ -133,21 +133,21 @@ end
 
 # Proxy instance methods as class methods
 ['connect!', 'disconnect!'].each do |meth|
-  FSDS::S3.add_class_method meth do |*args, &block|
+  UFS::S3.add_class_method meth do |*args, &block|
     self.new.send meth, *args, &block
   end
 end
 
 # Proxy ::AWS::S3::Base class methods as class methods
 ::AWS::S3::Base.public_methods(false).each do |meth|
-  FSDS::S3.add_class_method meth do |*args, &block|
+  UFS::S3.add_class_method meth do |*args, &block|
     begin
       ::AWS::S3::Base.send meth, *args, &block
     rescue AWS::S3::NoConnectionEstablished
-      if FSDS::S3.connect!
+      if UFS::S3.connect!
         retry
       else
-        raise FSDS::ConnectionError
+        raise UFS::ConnectionError
       end
     end
   end
@@ -158,27 +158,27 @@ end
   case meth
   # when ()
   when *["connection", "connections", "connected?", "current_bucket", "disconnect!"]
-    FSDS::S3.add_instance_method meth do
+    UFS::S3.add_instance_method meth do
       ::AWS::S3::Base.send meth
     end
   # when (verb, path, options, body, attempts, &block)
   when *["request"]
-    FSDS::S3.add_instance_method meth do |*args, &block|
+    UFS::S3.add_instance_method meth do |*args, &block|
       ::AWS::S3::Base.send meth, *args, &block
     end
   # when (path, headers = {}, body = nil, &block)
   when *["get", "post", "put" "delete", "head"]
-    FSDS::S3.add_instance_method meth do |*args, &block|
+    UFS::S3.add_instance_method meth do |*args, &block|
       ::AWS::S3::Base.send meth, *args, &block
     end
   # when (path!(bucket, key, options), options)
   when *["delete"]
-    FSDS::S3.add_instance_method meth do |*args|
+    UFS::S3.add_instance_method meth do |*args|
       ::AWS::S3::Base.send meth, *args
     end
   # when (*args)
   when *["disconnect", "set_current_bucket_to", "current_bucket=", "connections=", "delete"]
-    FSDS::S3.add_instance_method meth do |*args|
+    UFS::S3.add_instance_method meth do |*args|
       ::AWS::S3::Base.send meth, *args
     end
   end

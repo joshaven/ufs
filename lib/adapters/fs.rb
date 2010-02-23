@@ -1,26 +1,26 @@
-require File.join(File.expand_path(File.dirname(__FILE__)), '..', 'fsds') unless defined?(FSDS)
+require File.join(File.expand_path(File.dirname(__FILE__)), '..', 'ufs') unless defined?(UFS)
 
-class FSDS::FS < FSDS
+class UFS::FS < UFS
   attr_accessor :permissions, :owner, :group
   
-  # Retuns a FSDS adapter instance (File System Object).  The path, permissions, ownership & group can be 
+  # Retuns a UFS adapter instance (File System Object).  The path, permissions, ownership & group can be 
   # specified as attributes. The filesystem is not touched by this method.  The methods that 
   # make changes to the filesystem are generally ending with an exclamation point (!) and the 
-  # methods that read from the filesystem are generally ending with a question mark (?).  If an instance of FSDS::FS
+  # methods that read from the filesystem are generally ending with a question mark (?).  If an instance of UFS::FS
   # is given as the path then that instance is returned.
   #
   # Examples:
-  #   FSDS::FS::Dir.new '/tmp/test'
-  #   FSDS::FS::Dir.new '/tmp/test', 755
-  #   FSDS::FS::Dir.new '/tmp/test', 755, 'joshaven'
-  #   FSDS::FS::Dir.new '/tmp/test', 755, 'joshaven', 'staff'
-  #   FSDS::FS::Dir.new '/tmp/test', nil, 'joshaven'          # The attributes are ordered, however they are ignored if nil.
+  #   UFS::FS::Dir.new '/tmp/test'
+  #   UFS::FS::Dir.new '/tmp/test', 755
+  #   UFS::FS::Dir.new '/tmp/test', 755, 'joshaven'
+  #   UFS::FS::Dir.new '/tmp/test', 755, 'joshaven', 'staff'
+  #   UFS::FS::Dir.new '/tmp/test', nil, 'joshaven'          # The attributes are ordered, however they are ignored if nil.
   #
-  #   dir = FSDS::FS::Dir.new '/tmp/test'
-  #   FSDS::FS::Dir.new(dir).path == dir.path                 #=> true
+  #   dir = UFS::FS::Dir.new '/tmp/test'
+  #   UFS::FS::Dir.new(dir).path == dir.path                 #=> true
   def initialize(pth=nil, priv=nil, own=nil, grp=nil)
     # duplicat instance if initilize is called with an instance as the first argument
-    if pth.is_a?(FSDS::FS::File) || pth.is_a?(FSDS::FS::Dir)
+    if pth.is_a?(UFS::FS::File) || pth.is_a?(UFS::FS::Dir)
       priv  = pth.permissions
       own   = pth.owner
       grp   = pth.group
@@ -37,10 +37,10 @@ class FSDS::FS < FSDS
     @path ||= ''
   end
   
-  # Compares the given path string with the associated FSDS path string. Returns true or false.
+  # Compares the given path string with the associated UFS path string. Returns true or false.
   #
   # Example:
-  #   FSDS.new('/tmp') == '/tmp'  #=> true
+  #   UFS.new('/tmp') == '/tmp'  #=> true
   def ==(string)
     self.path == string
   end
@@ -48,13 +48,13 @@ class FSDS::FS < FSDS
   # Returns the path of the file.  To read the content of a text file, See: :read or :readln
   # 
   # Example:
-  #   f = FSDS.touch '/tmp/deleteme'
+  #   f = UFS.touch '/tmp/deleteme'
   #   f.to_s                          #=> "/tmp/deleteme"
   def to_s
     path
   end
   
-  # Returns a hash of information on the FSDS.  This method is dependent upon a Posix environment!
+  # Returns a hash of information on the UFS.  This method is dependent upon a Posix environment!
   #
   # Keys:
   # :name, :permissions, :owner, :group, :size, :modified, :mkdird, :subordinates  (subordinates are number of items contained)
@@ -81,7 +81,7 @@ class FSDS::FS < FSDS
     return {}
   end
   
-  # Get or set the permissions properity of a FSDS Ruby object.  This does not change or query anything in the filesystem.  
+  # Get or set the permissions properity of a UFS Ruby object.  This does not change or query anything in the filesystem.  
   # To make changes to the filesystem, call the :permissions! method.
   # To query the filesystem call the :permissions? method.
   def permissions(arg=nil)
@@ -92,12 +92,12 @@ class FSDS::FS < FSDS
   # Returns an integer representation of the permissions or nil if SFO doesn't exist.
   #
   # Example: 
-  #   FSDS('/tmp').permissions?   # => 777
+  #   UFS('/tmp').permissions?   # => 777
   def permissions?
     proprieties[:permissions]
   end
   
-  # Sets the file or dir permissions if the FSDS adapter object & permissions are valid.
+  # Sets the file or dir permissions if the UFS adapter object & permissions are valid.
   # Returns false if given invalid permissions or directory is not in existence.
   # The Permissions can be set via arguments or via the :permissions method.
   #
@@ -125,23 +125,23 @@ class FSDS::FS < FSDS
     end
   end
   
-  # Get or set the owner properity of a FSDS Ruby object.  This does not change or query anything in the filesystem.  
+  # Get or set the owner properity of a UFS Ruby object.  This does not change or query anything in the filesystem.  
   # To make changes to the filesystem, call the :owner! method.
   # To query the filesystem call the :group? method.
   #
   # Examples:
-  #   FSDS.mkdir('/tmp/testing.txt')
-  #   FSDS.owner 'joshaven'      #=> 'joshaven'
-  #   FSDS.owner                 #=> 'joshaven' 
+  #   UFS.mkdir('/tmp/testing.txt')
+  #   UFS.owner 'joshaven'      #=> 'joshaven'
+  #   UFS.owner                 #=> 'joshaven' 
   def owner(arg=nil)
     arg.nil? ? @owner : @owner = arg.to_s
   end
   alias_method :owner=, :owner
   
-  # Returns the current owner of the FSDS or nil if it doesn't exitst.  This reads from the filesystem
+  # Returns the current owner of the UFS or nil if it doesn't exitst.  This reads from the filesystem
   #
   # Examples:
-  #   p = FSDS.mkdir '/tmp/my_test'   # => #<FSDS:0x10062dfd0 @permissions=nil, @path="/tmp/my_test", @group=nil>
+  #   p = UFS.mkdir '/tmp/my_test'   # => #<UFS:0x10062dfd0 @permissions=nil, @path="/tmp/my_test", @group=nil>
   #   p.owner?                        # => "joshaven"  # or what ever your username is
   #   p.destroy!                      # => true        # just a bit of cleanup
   def owner?
@@ -149,14 +149,14 @@ class FSDS::FS < FSDS
     proprieties[:owner]
   end
   
-  # Sets the current owner of the FSDS.  Returns true or false.
+  # Sets the current owner of the UFS.  Returns true or false.
   #
   # options: options must be a hash with two optional keys:  :sudo & :arguments
   # * sudo: (optional) your sudo password
   # * arguments: (optional) string containing valid chown options, ie: '-R' for recursive
   #
   # Examples:
-  #   p = FSDS.mkdir '/tmp/my_test'  #
+  #   p = UFS.mkdir '/tmp/my_test'  #
   #   p.owner 'root'
   #   # The following will issue the command `sudo chown -R root /tmp/my_test` and supplies the password
   #   p.owner! {:sudo => 'mySecretPassword', :arguments => '-R'}  
@@ -173,7 +173,7 @@ class FSDS::FS < FSDS
     system_to_boolean "#{'echo '+options[:sudo]+'|sudo -S ' if options.has_key?(:sudo)}chown #{options[:arguments]} #{owner} #{path}" unless path.nil? || owner.nil?
   end
   
-  # Get or set the group properity of a FSDS Ruby object.  This does not change or query anything in the filesystem.  
+  # Get or set the group properity of a UFS Ruby object.  This does not change or query anything in the filesystem.  
   # To make changes to the filesystem, call the :owner! method.
   # To query the filesystem call the :group? method.
   def group(arg=nil)
@@ -185,12 +185,12 @@ class FSDS::FS < FSDS
   # Returns the current group of the filesystem object or nil if it doesn't exitst.  This reads from the filesystem.
   #
   # Examples:
-  #   FSDS.group? '/tmp'    #=> "wheel"
+  #   UFS.group? '/tmp'    #=> "wheel"
   def group?
     proprieties[:group]
   end
 
-  # Sets the current group of the FSDS.  Returns true or false.
+  # Sets the current group of the UFS.  Returns true or false.
   #
   # grp_name: optional group name as a string.  If not provided, the group setter will use the value of the @group 
   # instance variable.
@@ -200,7 +200,7 @@ class FSDS::FS < FSDS
   # - arguments: (optional) string containing valid chown options, ie: '-R' for recursive
   #
   # Examples:
-  #   p = FSDS.mkdir '/tmp/my_test'
+  #   p = UFS.mkdir '/tmp/my_test'
   #   p.owner 'root'
   #   # The following will issue the command `sudo chown -R root /tmp/my_test` and supplies the password
   #   p.owner! {:sudo => 'mySecretPassword', :arguments => '-R'}
@@ -223,17 +223,17 @@ class FSDS::FS < FSDS
     end
   end
 
-  # Removes FSDS from filesystem, returning true if successful or false if unsuccessful.
+  # Removes UFS from filesystem, returning true if successful or false if unsuccessful.
   #
   # Options:
   # * options may contain a hash with a sudo key containing a password: p.destroy!({:sudo => 'superSecret'})
   #
   # Example:
-  # p = FSDS.touch('/tmp/deleteme')
+  # p = UFS.touch('/tmp/deleteme')
   # p.destroy!                          # => true
-  # p.destroy!                          # => false    # its already gone, but the FSDS object remains.
+  # p.destroy!                          # => false    # its already gone, but the UFS object remains.
   # p.destroy! :sudo => 'superSecret'   # => false    # This does delete as super user, but its still not there
-  # FSDS.destroy!('/tmp/not_here_123')  # => false    # This assumes that you have set FSDS.default_adapter
+  # UFS.destroy!('/tmp/not_here_123')  # => false    # This assumes that you have set UFS.default_adapter
   def destroy!(options={})
     begin
       if options.has_key? :sudo
@@ -249,19 +249,19 @@ class FSDS::FS < FSDS
   # Move file or directory from current location to given location
   #
   # Examples:
-  #   f = FSDS::FS::File.touch '/tmp/deleteme.txt'
+  #   f = UFS::FS::File.touch '/tmp/deleteme.txt'
   #   f.move '~'                                      # Moves the file 'f' to the home dir and returns self
   #   f.path                                          #=> "/home/username/deleteme.txt"   # this is relitive to your path... '~'
   def move(new_location, options={})
     if new_location.is_a? String
       new_location = ::File.expand_path(new_location) + ::File::Separator
-      raise FSDS::WriteError if ::File.exists?(new_location + name)
+      raise UFS::WriteError if ::File.exists?(new_location + name)
       begin
-        raise FSDS::IOError unless system_to_boolean(
+        raise UFS::IOError unless system_to_boolean(
           options.has_key?(:sudo) ? "echo #{options[:sudo]}| sudo -S mv #{path} #{new_location}" : "mv #{path} #{new_location}"
         ) && self.path=(new_location + name)
       rescue
-        raise FSDS::IOError
+        raise UFS::IOError
       end
     else
       raise "The first paramater must be a String representation of the path to the new location."
@@ -270,10 +270,10 @@ class FSDS::FS < FSDS
   end
 
   def self.method_missing(sym, *args, &block)
-    if FSDS::FS::File.public_methods.include?(sym.to_s)
-      FSDS::FS::File.send(sym, *args, &block) unless FSDS::FS::Dir.public_methods.include?(sym.to_s)
-    elsif FSDS::FS::Dir.public_methods.include?(sym.to_s)
-      FSDS::FS::Dir.send(sym, *args, &block)
+    if UFS::FS::File.public_methods.include?(sym.to_s)
+      UFS::FS::File.send(sym, *args, &block) unless UFS::FS::Dir.public_methods.include?(sym.to_s)
+    elsif UFS::FS::Dir.public_methods.include?(sym.to_s)
+      UFS::FS::Dir.send(sym, *args, &block)
     else
       super
     end

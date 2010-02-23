@@ -1,9 +1,5 @@
-Consider changing name from FSDS to: "UFS - The Unified File Systems Gem"
- other ideas: "Universal File Access", "Common File Access", "Standardized Data Access"
-
-
-RDocs: Create standard fs methods doc file in FSDS and remove anything from individual adapters... 
-  - Probably move ALL methods to FSDS and allow the adapters to overwrite methods where needed.
+RDocs: Create standard fs methods doc file in UFS and remove anything from individual adapters... 
+  - Probably move ALL methods to UFS and allow the adapters to overwrite methods where needed.
 
 Specs: Create an API test file(s) that can be run on all adapter types and import the tests in each 
 specific adapter test file for consistent API testing
@@ -20,7 +16,7 @@ Finishing up:
   
 Ideas/questions/scratch_and_sniff:
 * Should any or all proxy methods return something other then the return status of the proxied method?
-  * FSDS.join().is_a?(String).should be_true ???
-  * FSDS.touch('/tmp/deleteme.txt').exist?.should be_true
-* Should there be a way to force proxy access?   done => FSDS::FS::File.proxy.mkdir '/tmp/deleteme'
+  * UFS.join().is_a?(String).should be_true ???
+  * UFS.touch('/tmp/deleteme.txt').exist?.should be_true
+* Should there be a way to force proxy access?   done => UFS::FS::File.proxy.mkdir '/tmp/deleteme'
 * Should  blocking I/O methods be asynchronous capable?  @file.write(data, :async => true)

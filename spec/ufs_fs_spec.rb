@@ -1,14 +1,14 @@
 require File.join( File.expand_path(File.dirname(__FILE__)), 'spec_helper' )
 
-describe 'FSDS::FS' do
+describe 'UFS::FS' do
   before :all do
     @fn = '/tmp/deleteme.txt'
     @dn = '/tmp/deleteme'
     # @sudo_password = 'SetMe'
   end
   before :each do
-    @file = FSDS::FS::File.new @fn
-    @dir = FSDS::FS::Dir.new @dn
+    @file = UFS::FS::File.new @fn
+    @dir = UFS::FS::Dir.new @dn
   end
   after :each do
     @file.destroy! if @file
@@ -16,8 +16,8 @@ describe 'FSDS::FS' do
   end
   
   it 'should instantize' do
-    FSDS.default_adapter = FSDS::FS
-    FSDS.new.class.should == FSDS::FS
+    UFS.default_adapter = UFS::FS
+    UFS.new.class.should == UFS::FS
   end
   
   it 'should know to_s' do
@@ -27,12 +27,12 @@ describe 'FSDS::FS' do
   
   it 'should inherit permissions' do
     @file.touch @fn
-    @file.group?.should == FSDS::FS::Dir.group?('/tmp')
+    @file.group?.should == UFS::FS::Dir.group?('/tmp')
   end
   
   it 'should be able to determine file or dir based upon method requested' do
-    FSDS.default_adapter = FSDS::FS
-    FSDS.touch(@fn).class.should == FSDS::FS::File
-    FSDS.mkdir(@dn).class.should == FSDS::FS::Dir
+    UFS.default_adapter = UFS::FS
+    UFS.touch(@fn).class.should == UFS::FS::File
+    UFS.mkdir(@dn).class.should == UFS::FS::Dir
   end
 end

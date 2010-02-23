@@ -1,32 +1,31 @@
-= FSDS - File System as a Data Store 
+= UFS - Universal File System
 Or anything that is FileSystem Like... Including a Posix FileSystem, Amazon S3, & .tgz 
 files or combinations of each one.
 
 == Notice
 This project is under development.  Your welcome to use it but it is NOT
-complete and the API is subject to change.  The filesystem (FSDS::FS) should be fairly stable.
+complete and the API is subject to change.  The filesystem (UFS::FS) should be fairly stable.
 
 == Description
-File System as a Data Store.  The goal of this gem is to make using your file
-system, or other data storage that can work like a file system, for document
-storage in a friendly way.  This gem has been tested & documented from the ground
-up so the testing and documentation should be pretty comprehensive.
+The goal of this gem is to make using your file system (or other data storage that can work 
+like a file system) accessible in a friendly and universal way.  This gem has been tested & 
+documented from the ground up so the testing and documentation should be pretty comprehensive.
 
 To begin with, I intend to support "the local FileSystem", "Amazon S3", or "compressed files (.tgz)"
 as FileSystems.  Of course the compressed .tgz can reside on S3 or on your local file system 
 interchangeably. I would love to further the adapter types to include options like ssh connections, 
-webdev, etc. but that will not happen in the near future.
+webdev, git repositories, etc.
 
 == Mini-API
 You should be able to use the standard read & write methods regardless of the adapter 
-chosen.  For example, you should be able to FSDS.touch('path/to/location.txt') 
+chosen.  For example, you should be able to UFS.touch('path/to/location.txt') 
 when using the FS, S3 or TGZ adapters interchangeably.  The adapters, however will
 have to be configured before use which may consist of at least a declaration of the
 default_adapter type as well as possibly providing authentication, location or other 
 communication data.
 
 Adapter standard methods should include:
-* Common to all FSDS objects
+* Common to all UFS objects
   * :exists?            #=> true/false
   * :destroy!           #=> true/false
   * :type               # returns the class name
@@ -40,27 +39,27 @@ Adapter standard methods should include:
 * file objects           (An object that contains singular content, binary, text, etc.)
   * :touch(path_string)         #=> file object (or equivalent)
   * :concat!(data)              #=> appends or creates a file with the given content.  Returns a file object (or equivalent)
-  * :concat(data), :<<(data)    #=> appends.  Returns a file object (or equivalent) or FSDS::WriteError if file doesn't exist.
+  * :concat(data), :<<(data)    #=> appends.  Returns a file object (or equivalent) or UFS::WriteError if file doesn't exist.
   * :writeln(data)              #=> appends the file with a line of text, it is assured to be on its own line without extra newline characters
   * :read                       #=> content of file
   * :readln(number)             #=> returns the line requested form the file or nil if the line doesn't exist
   * :readln(range)              #=> returns an array of lines as requested ie: file.readln(0..9)
   * :read_by_bytes(start, continue)  #=> reads from the first byte requested through the number of continue bytes
-  * Object should proxy the methods of the real object where possible... The ::FSDS::FS::File object proxies to ::File
-    * For example file.executable? should answer with the ::File.executable?(path).  In this example, the path variable is taken from the file instance of ::FSDS::FS::File
+  * Object should proxy the methods of the real object where possible... The ::UFS::FS::File object proxies to ::File
+    * For example file.executable? should answer with the ::File.executable?(path).  In this example, the path variable is taken from the file instance of ::UFS::FS::File
 * directory objects      (An object that contains file objects)
-  * :mkdir(path_string)         #=> directory object (or equivalent) or raise FSDS::WriteError if the directory cannot be created
+  * :mkdir(path_string)         #=> directory object (or equivalent) or raise UFS::WriteError if the directory cannot be created
   * :mkdir!(path_string)        #=> directory object (or equivalent) will attempt to make intermediate directories
   * :to_a                       #=> returns an array of the objects contained in the directory
   * :<<(file_object)            #=> moves the given file_object to the directory
-  * Object should proxy the methods of the real object where possible... The ::FSDS::FS::File object proxies to ::File
-    * For example FSDS::FS::Dir.pwd will return the working directory through proxying to ::Dir.pwd().
+  * Object should proxy the methods of the real object where possible... The ::UFS::FS::File object proxies to ::File
+    * For example UFS::FS::Dir.pwd will return the working directory through proxying to ::Dir.pwd().
 
 == Example 1
   # Touching on directories & text files using the FileSystem adapter:
-  FSDS.default_adapter = FSDS::FS
-  dir = FSDS.mkdir '/tmp/testing_deleteme'
-  f = FSDS.touch "#{dir}/deleteme"
+  UFS.default_adapter = UFS::FS
+  dir = UFS.mkdir '/tmp/testing_deleteme'
+  f = UFS.touch "#{dir}/deleteme"
   f.to_s                      #=> "/tmp/testing_deleteme/deleteme"
   f << "Hello"
   f.read                      #=> "Hello"
@@ -71,15 +70,15 @@ Adapter standard methods should include:
   f.readln 0                  #=> "Hello world"
   f.readln 0..1               #=> ["Hello world", "another line"]
   dir.destroy!                # lets see what happens if we delete the folder that contains the file...
-  f.read                      #=> FSDS_Errors::ReadError: FSDS_Errors::ReadError
+  f.read                      #=> UFS_Errors::ReadError: UFS_Errors::ReadError
   f.exists?                   #=> false
   dir.exists?                 #=> false
 
 
 == Installation
 When things are finished up a bit I'll be releasing this as a gem.  For now you can check this project out 
-in your projects ./lib folder then be sure to include ./lib/fsds/lib/fsds.rb.  Assuming your lib is in your 
-gem path you would do: require('fsds/lib/fsds') but I'll leave that one up to you to figure out.  Enjoy and
+in your projects ./lib folder then be sure to include ./lib/ufs/lib/ufs.rb.  Assuming your lib is in your 
+gem path you would do: require('ufs/lib/ufs') but I'll leave that one up to you to figure out.  Enjoy and
 don't be afraid to contact me if you have any questions.
 
 == Note on Patches/Pull Requests

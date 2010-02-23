@@ -1,4 +1,4 @@
-require File.join(File.dirname(__FILE__), '..', 'lib', 'fsds')
+require File.join(File.dirname(__FILE__), '..', 'lib', 'ufs')
 require 'spec'
 require 'spec/autorun'
 

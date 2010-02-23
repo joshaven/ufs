@@ -1,15 +1,15 @@
 require File.join(File.expand_path(File.dirname(__FILE__)), 'metaclass') unless defined?(Object.metaclass)
-require File.join(File.expand_path(File.dirname(__FILE__)), 'errors') unless defined?(FSDS_Errors)
+require File.join(File.expand_path(File.dirname(__FILE__)), 'errors') unless defined?(UFS_Errors)
 require File.join(File.expand_path(File.dirname(__FILE__)), 'string_ext') unless String.methods.include? 'constantize'
 
-class FSDS
-  include FSDS_Errors
+class UFS
+  include UFS_Errors
   attr_accessor :path
   
-  # For FSDS.new only: returns an instance of the default_adapter or self if no default_adapter has been specified
+  # For UFS.new only: returns an instance of the default_adapter or self if no default_adapter has been specified
   def self.new(*args, &block)
-    if self == FSDS
-      klass = FSDS.default_adapter ? FSDS.default_adapter : self
+    if self == UFS
+      klass = UFS.default_adapter ? UFS.default_adapter : self
       obj = klass.send(:allocate)
       obj.send(:initialize, *args, &block)
       return obj
@@ -22,9 +22,9 @@ class FSDS
   # adapter then the correct adapter cannnot be automatically determined.
   #
   # Example:
-  #   FSDS.default_adapter FSDS::FS
-  #   # FSDS.touch is now the same thing as: FSDS::FS::File.touch
-  #   FSDS.default_adapter   # => FSDS::FS
+  #   UFS.default_adapter UFS::FS
+  #   # UFS.touch is now the same thing as: UFS::FS::File.touch
+  #   UFS.default_adapter   # => UFS::FS
   def self.default_adapter(type = :noting_to_set)
     @default_adapter ||= nil
     type == :noting_to_set ? @default_adapter : @default_adapter=type
@@ -35,17 +35,17 @@ class FSDS
     self.default_adapter type
   end
   
-  # This allows a Adapter object to register methods to the default_adapter through its inheritence of FSDS. 
+  # This allows a Adapter object to register methods to the default_adapter through its inheritence of UFS. 
   # The purpose for this is to be able to guess what adapter class is needed.  Registering :touch is what 
-  # allows FSDS::FS to be able to figure out that a method call to :touch means that you must want a FSDS::FS::File.
+  # allows UFS::FS to be able to figure out that a method call to :touch means that you must want a UFS::FS::File.
   #
   # If the method is already registered then the registry is removed, this is a protection so that, for example, 
-  # both FSDS::FS::Dir & FSDS::FS::File cannot register the :<< method which does different things.
+  # both UFS::FS::Dir & UFS::FS::File cannot register the :<< method which does different things.
   #
   # Example:
   #   # code example from lib/adapters/fs/file.rb
   #   ['touch', 'create!', "concat!", "concat", "<<", "size"].each do |meth|
-  #     FSDS::FS.register_downline_public_methods(meth, FSDS::FS::File)
+  #     UFS::FS.register_downline_public_methods(meth, UFS::FS::File)
   #   end
   def self.register_downline_public_methods(meth, obj)
     if (@downline_methods ||= {}).has_key? meth
@@ -63,13 +63,13 @@ class FSDS
     end
   end
   
-  # If the public method is not found in FSDS, FSDS will attempt to pass the request to the default_adapter.
+  # If the public method is not found in UFS, UFS will attempt to pass the request to the default_adapter.
   #
   # Example:
-  #   FSDS.default_adapter = FSDS::FS
-  #   FSDS.touch('/tmp/deleteme.txt)  # Will attempt to find a FSDS::FS class method, which will return a FSDS::FS::File object
+  #   UFS.default_adapter = UFS::FS
+  #   UFS.touch('/tmp/deleteme.txt)  # Will attempt to find a UFS::FS class method, which will return a UFS::FS::File object
   def self.method_missing(sym, *args, &block)
-    if default_adapter && self == FSDS
+    if default_adapter && self == UFS
       default_adapter.send(sym, *args, &block)
     else
       super
@@ -79,9 +79,9 @@ class FSDS
   # Returns the path minus the location of the File or Dir.
   #
   # Examples:
-  #   FSDS::FS::File.new('/tmp/deleteme.txt').name  #=> "deleteme.txt"
-  #   FSDS::FS::Dir.new('/tmp/deleteme').name  #=> "deleteme"
-  #   FSDS::S3::S3Object.new('/tmp/deleteme.txt).name  #=> "deleteme.txt"
+  #   UFS::FS::File.new('/tmp/deleteme.txt').name  #=> "deleteme.txt"
+  #   UFS::FS::Dir.new('/tmp/deleteme').name  #=> "deleteme"
+  #   UFS::S3::S3Object.new('/tmp/deleteme.txt).name  #=> "deleteme.txt"
   def name
     path.split(::File::Separator).last
   end
@@ -117,7 +117,7 @@ class FSDS
   # Does not automatically prepend a separator unless a hash is provided with a :prefix key.
   # 
   # Example:
-  #   f=FSDS.new
+  #   f=UFS.new
   #   f.as_path 'path/to/some', 'world.txt'                               #=> "path/to/some/world.txt"
   #   f.as_path 'path/to', 'some', 'world.txt'                            #=> "path/to/some/world.txt"
   #   f.as_path '/path/', '/to/some//', '/', '/world.txt'                 #=> "/path/to/some/world.txt"
@@ -139,8 +139,8 @@ private
   # This is useful for building proxying objects.  This method also works on anything that inherits from this object.
   #
   # Example:
-  #   # The following creates a class method ie:  FSDS::FS::File.join 'one', 'two', 'three'
-  #   FSDS::FS::File.add_class_method :join do |*args|
+  #   # The following creates a class method ie:  UFS::FS::File.join 'one', 'two', 'three'
+  #   UFS::FS::File.add_class_method :join do |*args|
   #     ::File.join *args
   #   end
   def self.add_class_method(meth, &block)
@@ -151,8 +151,8 @@ private
   # This is useful for building proxying objects.
   #
   # Example:
-  #   # The following creates an instance method ie:  FSDS::FS::File.new('/tmp/deleteme.txt').exists?
-  #   FSDS::FS::File.add_instance_method :exists? do |*args|
+  #   # The following creates an instance method ie:  UFS::FS::File.new('/tmp/deleteme.txt').exists?
+  #   UFS::FS::File.add_instance_method :exists? do |*args|
   #     ::File.exists? *args
   #   end
   def self.add_instance_method(meth, &block)
@@ -163,11 +163,11 @@ private
 end
 
 # # Make the :new method optional...  appends the Kernel object.
-# # This is fun but it only allows (FSDS 'something') to become (FSDS.new 'something')
+# # This is fun but it only allows (UFS 'something') to become (UFS.new 'something')
 # # I need something
 # module Kernel
-#   def FSDS(*params)
-#     ::FSDS.new *params
+#   def UFS(*params)
+#     ::UFS.new *params
 #   end
 # end
 # 

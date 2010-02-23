@@ -1,6 +1,6 @@
 require File.join( File.expand_path(File.dirname(__FILE__)), 'spec_helper' )
 
-describe 'FSDS::FS::File' do
+describe 'UFS::FS::File' do
   before :all do
     @fn = '/tmp/deleteme.txt'
     @app_root = File.expand_path( File.join(File.dirname(__FILE__), '..') )
@@ -8,7 +8,7 @@ describe 'FSDS::FS::File' do
     # @sudo_password = 'SetMe'
   end
   before :each do
-    @file = FSDS::FS::File.new @fn
+    @file = UFS::FS::File.new @fn
   end
   
   after :each do
@@ -16,21 +16,21 @@ describe 'FSDS::FS::File' do
   end
   
   it 'should instantize' do
-    FSDS::FS.should be_true
-    FSDS::FS::File.new.is_a?(FSDS::FS::File).should be_true
+    UFS::FS.should be_true
+    UFS::FS::File.new.is_a?(UFS::FS::File).should be_true
   end
 
   it 'should not blow up when the path is blank' do
-    FSDS::FS::File.exists?(nil).should be_false
+    UFS::FS::File.exists?(nil).should be_false
   end
   
   it 'should instantize when given an instance' do
-    FSDS::FS::File.new(@file).path.should == @file.path
+    UFS::FS::File.new(@file).path.should == @file.path
   end
   
   it 'should be able to touch' do
-    FSDS::FS::File.touch(@fn).is_a?(FSDS::FS::File).should be_true
-    @file.touch.is_a?(FSDS::FS::File).should be_true
+    UFS::FS::File.touch(@fn).is_a?(UFS::FS::File).should be_true
+    @file.touch.is_a?(UFS::FS::File).should be_true
     @file.exists?.should be_true
   end
   
@@ -38,7 +38,7 @@ describe 'FSDS::FS::File' do
     @file.exists?.should be_false
     @file.touch
     @file.exists?.should be_true
-    FSDS::FS::File.exists?(@fn).should be_true
+    UFS::FS::File.exists?(@fn).should be_true
   end
   
   it 'should be able to destroy!' do
@@ -50,8 +50,8 @@ describe 'FSDS::FS::File' do
   end
   
   it 'should respond to :class, ==, & ===' do
-    @file.class.should == FSDS::FS::File
-    FSDS::FS::File.should === @file
+    @file.class.should == UFS::FS::File
+    UFS::FS::File.should === @file
     @file.should == @fn
   end
   
@@ -69,10 +69,10 @@ describe 'FSDS::FS::File' do
   end
   
   it 'should handle :permissions permissions? permissions!' do
-    passwd = FSDS::FS::File.new('/etc/passwd')
+    passwd = UFS::FS::File.new('/etc/passwd')
     passwd.permissions?.should == 644
     
-    f = FSDS::FS::File.touch '~/deleteme.txt'
+    f = UFS::FS::File.touch '~/deleteme.txt'
     f.permissions?.is_a?(Integer).should be_true
     f.permissions?.should_not == 777
     f.permissions!(777).should be_true
@@ -109,10 +109,10 @@ describe 'FSDS::FS::File' do
   end
   
   it 'should return self when writing to a file or raise an error' do
-    @file.concat!('Hello').is_a?(FSDS::FS::File).should be_true
-    (@file << ' world').is_a?(FSDS::FS::File).should be_true
+    @file.concat!('Hello').is_a?(UFS::FS::File).should be_true
+    (@file << ' world').is_a?(UFS::FS::File).should be_true
     @file.destroy!.should be_true
-    (lambda { @file << 'hello' }).should raise_error(FSDS::WriteError)
+    (lambda { @file << 'hello' }).should raise_error(UFS::WriteError)
   end
   
   it 'should write by line' do
@@ -176,7 +176,7 @@ describe 'FSDS::FS::File' do
   it 'should be able to move' do
     @file.destroy!("~/#{@fn}")
     @file.touch.should be_true
-    @file.move('~').is_a?(FSDS::FS::File).should be_true
+    @file.move('~').is_a?(UFS::FS::File).should be_true
     @file.path.should == File.expand_path("~/#{@file.name}")
     @file.destroy!.should be_true
   end
@@ -187,8 +187,8 @@ describe 'FSDS::FS::File' do
     @file.permissions! 777
     @file.executable?.should be_true
     
-    FSDS::FS::File.new.join('tmp', 'test').should == ::File.join('tmp', 'test')
-    FSDS::FS::File.join('tmp', 'test').should == ::File.join('tmp', 'test')
+    UFS::FS::File.new.join('tmp', 'test').should == ::File.join('tmp', 'test')
+    UFS::FS::File.join('tmp', 'test').should == ::File.join('tmp', 'test')
   end
   
   it 'should port ::File instance methods' do
@@ -200,17 +200,17 @@ describe 'FSDS::FS::File' do
     bin_file  = File.join( @app_root, 'spec', 'fixtures', 'copycat.jpg' )
     text_file = File.join( @app_root, 'spec', 'spec_helper.rb' )
     
-    FSDS::FS::File.read(bin_file).should == FSDS::FS::File.new(bin_file).read
-    FSDS::FS::File.exists?(text_file).should be_true
+    UFS::FS::File.read(bin_file).should == UFS::FS::File.new(bin_file).read
+    UFS::FS::File.exists?(text_file).should be_true
   end
   
   it 'should be able to handle binary files' do
-    FSDS.default_adapter = FSDS::FS
+    UFS.default_adapter = UFS::FS
     spec_path = File.expand_path(File.dirname(__FILE__))
-    fixture_path = FSDS::FS::File.join(spec_path, 'fixtures')
-    pic = FSDS::FS::File.new("#{spec_path}/fixtures/copycat.jpg")
-    pic.move(spec_path).path.should == FSDS::FS::File.join(spec_path, 'copycat.jpg')
-    pic.move(fixture_path).path.should == FSDS::FS::File.join(fixture_path, 'copycat.jpg')
+    fixture_path = UFS::FS::File.join(spec_path, 'fixtures')
+    pic = UFS::FS::File.new("#{spec_path}/fixtures/copycat.jpg")
+    pic.move(spec_path).path.should == UFS::FS::File.join(spec_path, 'copycat.jpg')
+    pic.move(fixture_path).path.should == UFS::FS::File.join(fixture_path, 'copycat.jpg')
     (14000...16000).should === pic.size
   end
 end

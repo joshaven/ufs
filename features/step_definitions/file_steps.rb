@@ -1,6 +1,6 @@
 Given /^I am using the (.*) adapter$/ do |adapter|
   # pending # express the regexp above with the code you wish you had
-  FSDS.default_adapter = adapter
+  UFS.default_adapter = adapter
 end
 
 When /^I touch \/tmp\/test\.txt$/ do

@@ -5,8 +5,8 @@ Story 'Ensure universal API for files and folders',
     Given 'a file name of', '/tmp/delete me.txt' do |expectation|
       @fn = expectation
     end
-    And 'a default adapter' FSDS::FS do |adapter|
-      FSDS.default_adapter = adapter
+    And 'a default adapter' UFS::FS do |adapter|
+      UFS.default_adapter = adapter
     end
     When 'I touch the file' do
       @file.touch
@@ -21,7 +21,7 @@ Story 'Ensure universal API for files and folders',
 
   Scenario 'Touch to a non-existent file on S3' do
     Given 'a file name of', '/tmp/delete me.txt'
-    And 'a default adapter' FSDS::FS
+    And 'a default adapter' UFS::FS
     When 'I touch the file'
     Then 'my file should exist.'
     And 'I should cleanup the filesystem by destroying the file.'

@@ -1,12 +1,12 @@
 require File.join( File.expand_path(File.dirname(__FILE__)), 'spec_helper' )
 
-describe 'FSDS' do
+describe 'UFS' do
   after :each do
-    FSDS.default_adapter(nil) # reset because: Class variables presist between tests...
+    UFS.default_adapter(nil) # reset because: Class variables presist between tests...
   end
   
-  it 'should be able to add class & instance methods to objects inheriting from FSDS through :add_class_method & :add_instance_method' do
-    class TestAddingClassMethods < FSDS; end
+  it 'should be able to add class & instance methods to objects inheriting from UFS through :add_class_method & :add_instance_method' do
+    class TestAddingClassMethods < UFS; end
     
     TestAddingClassMethods.add_class_method :greet do
       return 'hello from class method'
@@ -21,45 +21,45 @@ describe 'FSDS' do
   end
   
   it 'should be able to get and set the default_adapter' do
-    FSDS.default_adapter.should be_nil
+    UFS.default_adapter.should be_nil
     # Set and default_adapter
-    (FSDS.default_adapter=FSDS).should be_true
+    (UFS.default_adapter=UFS).should be_true
     # Read default_adapter
-    FSDS.default_adapter.should == FSDS
+    UFS.default_adapter.should == UFS
     
     # Set the default_adapter without the :default_adapter= method... also test resetting it to nil
-    FSDS.default_adapter(nil).should be_nil
+    UFS.default_adapter(nil).should be_nil
     # Read default_adapter
-    FSDS.default_adapter.should be_nil
+    UFS.default_adapter.should be_nil
   end
   
-  it 'instantization should give you an instance of the default adapter or FSDS if no default_adapter is set' do
-    FSDS.new.is_a?(FSDS).should be_true
-    if defined?(FSDS::FS)
-      FSDS.default_adapter=(FSDS::FS)
-      FSDS::FS.new.is_a?(FSDS).should be_true
+  it 'instantization should give you an instance of the default adapter or UFS if no default_adapter is set' do
+    UFS.new.is_a?(UFS).should be_true
+    if defined?(UFS::FS)
+      UFS.default_adapter=(UFS::FS)
+      UFS::FS.new.is_a?(UFS).should be_true
       
       # The following ensures that the attributes are passed through.  Although it makes some 
       # assumptions about the object being tested which *should* be outside the scope of this test
-      FSDS.new('/tmp').path.should == '/tmp'  
+      UFS.new('/tmp').path.should == '/tmp'  
     end
     
-    if defined?(FSDS::S3)
-      FSDS.default_adapter=(FSDS::S3)
-      FSDS.new.is_a?(FSDS::S3).should be_true
+    if defined?(UFS::S3)
+      UFS.default_adapter=(UFS::S3)
+      UFS.new.is_a?(UFS::S3).should be_true
     end
   end
   
   it 'instantization of an inherited object should not be affected by the default_adapter setting' do
-    FSDS::FS::File.should == FSDS::FS::File
-    FSDS::FS::File.new.class.should == FSDS::FS::File
-    FSDS.default_adapter=(FSDS::FS)
-    FSDS::FS::File.should == FSDS::FS::File
-    FSDS::FS::File.new.class.should == FSDS::FS::File
+    UFS::FS::File.should == UFS::FS::File
+    UFS::FS::File.new.class.should == UFS::FS::File
+    UFS.default_adapter=(UFS::FS)
+    UFS::FS::File.should == UFS::FS::File
+    UFS::FS::File.new.class.should == UFS::FS::File
   end
 
   it 'should make paths from path fragments' do
-    f = FSDS.new
+    f = UFS.new
     f.as_path('tmp', '/hello').should == 'tmp/hello'
     f.as_path('tmp', '/hello', {:prefix => '/'}).should == '/tmp/hello'
     f.as_path('tmp', '/hello', {:prefix => '\\'}).should == '/tmp/hello'

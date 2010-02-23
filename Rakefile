@@ -4,11 +4,17 @@ require 'rake'
 begin
   require 'jeweler'
   Jeweler::Tasks.new do |gemspec|
-    gemspec.name = "fsds"
-    gemspec.summary = %Q{Use your File System As a Data Store}
-    gemspec.description = %Q{TODO: longer description of your gem}
+    gemspec.name = "ufs"
+    gemspec.summary = %Q{Universal and easy access to multiple file storage containers, 
+      including the local filesystem and Amazon S3}
+    gemspec.description = %Q{TODO: The goal of this gem is to make using your file system 
+      (or other data storage that can work like a file system) accessible in a friendly 
+      and universal way.  This gem has been tested & documented from the ground up so the 
+      testing and documentation should be pretty comprehensive.  The local file system is 
+      currently fully supported and Amazon S3 funcitonal for simple read & write functions.
+      AWS S3 is lacking proper access control, permissions & ownership support.}
     gemspec.email = "yourtech@gmail.com"
-    gemspec.homepage = "http://github.com/joshaven/fsds"
+    gemspec.homepage = "http://github.com/joshaven/ufs"
     gemspec.authors = ["Joshaven Potter"]
     gemspec.add_development_dependency "rspec", ">= 1.2.9"
     # gemspec is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
@@ -41,7 +47,7 @@ Rake::RDocTask.new do |rdoc|
   version = File.exist?('VERSION') ? File.read('VERSION') : ""
 
   rdoc.rdoc_dir = 'rdoc'
-  rdoc.title = "fsds #{version}"
+  rdoc.title = "ufs #{version}"
   rdoc.rdoc_files.include('README*')
   rdoc.rdoc_files.include('lib/**/*.rb')
 end

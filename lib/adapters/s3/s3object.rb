@@ -2,25 +2,25 @@
 # but there has to be a better way then always supporting an options hash... maybe only class methods need this feature 
 # but with dynamic class methods, most instance methods may need this.
 
-require File.join(File.expand_path(File.dirname(__FILE__)), '..', 's3') unless defined?(FSDS::S3)
+require File.join(File.expand_path(File.dirname(__FILE__)), '..', 's3') unless defined?(UFS::S3)
 
-class FSDS::S3::S3Object < FSDS::S3
+class UFS::S3::S3Object < UFS::S3
   # Writes data (string or IO stream) to the file, creating the file if it does not exist.
   # options may override either of: (:bucket_name, :content_type)
-  def concat!(data, options = {:bucket_name => FSDS::S3.bucket.to_s})
+  def concat!(data, options = {:bucket_name => UFS::S3.bucket.to_s})
     # ::AWS::S3::S3Object.store path, data, options.delete(:bucket_name), options
     begin
       write( (read(options) + data), options)
-    rescue FSDS::ReadError
+    rescue UFS::ReadError
       write(data, options)
     end
     self
   end
   
-  # Writes data (string or IO stream) to the file or returns FSDS::WriteError if the file
+  # Writes data (string or IO stream) to the file or returns UFS::WriteError if the file
   # does not exist.  Options may override either of: (:bucket_name, :content_type)
-  def concat(data, options = {:bucket_name => FSDS::S3.bucket.to_s})
-    raise FSDS::WriteError unless exists?
+  def concat(data, options = {:bucket_name => UFS::S3.bucket.to_s})
+    raise UFS::WriteError unless exists?
     concat! data, options
   end
   alias_method :<<, :concat
@@ -28,12 +28,12 @@ class FSDS::S3::S3Object < FSDS::S3
   # Ensures file exists by writing an empty string to the file if it doesn't exist.  This
   # is not nessassary for S3 operation but is emplemented for inter-operability with other
   # data stores, primarly POSIX file systems.
-  def touch(options = {:bucket_name => FSDS::S3.bucket.to_s})
+  def touch(options = {:bucket_name => UFS::S3.bucket.to_s})
     exists?(options) ? self : concat!('', options)
   end
   
   # Permanently deletes the record on S3 and removes from memory
-  def destroy!(options = {:bucket_name => FSDS::S3.bucket.to_s})
+  def destroy!(options = {:bucket_name => UFS::S3.bucket.to_s})
     return true unless exists?(options)
     
     begin
@@ -44,11 +44,11 @@ class FSDS::S3::S3Object < FSDS::S3
   end
   
   # Returns True/False
-  def exists?(options = {:bucket_name => FSDS::S3.bucket.to_s})
+  def exists?(options = {:bucket_name => UFS::S3.bucket.to_s})
     return false if path.nil?
     
-    unless FSDS::S3.connected? && options[:bucket_name].is_a?(String)
-      raise FSDS::ConnectionError
+    unless UFS::S3.connected? && options[:bucket_name].is_a?(String)
+      raise UFS::ConnectionError
     end
     
     return begin
@@ -62,14 +62,14 @@ class FSDS::S3::S3Object < FSDS::S3
   # Returns the entire file as a string.
   #
   # Example:
-  #   f = FSDS.new 'path/to/file'
+  #   f = UFS.new 'path/to/file'
   #   f.read   #=> "Line: 0\nLine: 1\n"  
-  def read(options = {:bucket_name => FSDS::S3.bucket.to_s})
+  def read(options = {:bucket_name => UFS::S3.bucket.to_s})
     s3 = vassal(options)
     if s3 && s3.stored?
       s3.value
     else
-      raise FSDS::ReadError
+      raise UFS::ReadError
     end
   end
   
@@ -77,7 +77,7 @@ class FSDS::S3::S3Object < FSDS::S3
   # the last line would be 9. Represented as a range this would be: file.readln(0..9)
   # 
   # Examples:
-  #   f = FSDS.new 'path/to/file'
+  #   f = UFS.new 'path/to/file'
   #   f.readln 0   #=> "Line: 0"
   #   f.readln(0..2)   #=> ["Line: 0", "Line: 1", "Line: 2"]
   def readln(line)
@@ -89,7 +89,7 @@ class FSDS::S3::S3Object < FSDS::S3
         ::File.readlines(path)[line.first, line.last+1].collect {|str| str.chomp if str.is_a?(String) }
       end
     rescue
-      raise FSDS::ReadError
+      raise UFS::ReadError
     end
   end
   
@@ -97,29 +97,29 @@ class FSDS::S3::S3Object < FSDS::S3
   # Writes a string with an appended newline to to a file.
   #
   # Example:
-  #   f = FSDS.new 'path/to/file'
+  #   f = UFS.new 'path/to/file'
   #   f.writeln "Line: 0"
   #   f.writeln "Line: 1"
   #   f.read   #=> "Line: 0\nLine: 1\n"
-  def write(data, options = {:bucket_name => FSDS::S3.bucket.to_s})
+  def write(data, options = {:bucket_name => UFS::S3.bucket.to_s})
     s3 = initiate(options)
     s3.value = data
     if s3.store
       refresh!
       true
     else
-      raise FSDS::WriteError
+      raise UFS::WriteError
     end
   end
   
   # Writes a string with an appended newline to to a file.
   #
   # Example:
-  #   f = FSDS.new 'path/to/file'
+  #   f = UFS.new 'path/to/file'
   #   f.writeln "Line: 0"
   #   f.writeln "Line: 1"
   #   f.read   #=> "Line: 0\nLine: 1\n"
-  def writeln(data, options = {:bucket_name => FSDS::S3.bucket.to_s})
+  def writeln(data, options = {:bucket_name => UFS::S3.bucket.to_s})
     # Ensure that the last character in the file is a newline, or that the file is empty
     data = $/ + data unless read_by_bytes(-1) == $/ if size > 0
     concat! data.to_s.chomp + $/
@@ -128,19 +128,19 @@ class FSDS::S3::S3Object < FSDS::S3
   # Move file or directory from current location to given location
   #
   # Examples:
-  #   f = FSDS::S3::S3Object.touch '/tmp/deleteme.txt'
+  #   f = UFS::S3::S3Object.touch '/tmp/deleteme.txt'
   #   f.move '~'                                      # Moves the file 'f' to the home dir and returns self
   #   f.path                                          #=> "/home/username/deleteme.txt"   # this is relitive to your path... '~'
   def move(new_location, options={})
     raise "The first paramater must be a String representation of the path to the new location." unless new_location.is_a? String
     
     new_location = as_path(new_location, name) unless new_location.split(::File::Separator).last == name
-    raise FSDS::WriteError if ::File.exists?(new_location)
+    raise UFS::WriteError if ::File.exists?(new_location)
     begin
       vassal(options).key = as_path(new_location)
       self.path = vassal.key
     rescue
-      raise FSDS::IOError
+      raise UFS::IOError
     end
     
     self
@@ -157,7 +157,7 @@ class FSDS::S3::S3Object < FSDS::S3
   #   length - Interger, The number of bytes to read
   #
   # Examples:
-  #   file = FSDS::FS::File.touch '/tmp/deleteme.txt'
+  #   file = UFS::FS::File.touch '/tmp/deleteme.txt'
   #   file << '0123456789abcdefghij'
   #   file.read_by_bytes(0..9)    #=> "0123456789"
   #   file.read_by_bytes(5..14)   #=> "56789abcde"
@@ -188,7 +188,7 @@ private
   # Returns the S3Object from the AWS store or false if it cannot be found.  Same as calling :proxy but attempts to find
   # the S3Object if it doesn't exist 
   # TODO: consider renaming :vassal to :find
-  def vassal(options = {:bucket_name => FSDS::S3.bucket.to_s})
+  def vassal(options = {:bucket_name => UFS::S3.bucket.to_s})
     begin
       proxy do
         ::AWS::S3::S3Object.find(path.to_s.gsub(/^\//,''), options[:bucket_name].to_s)
@@ -200,7 +200,7 @@ private
   
   # Ensure that the proxied object is fresh from AWS...  If the proxied object doesn't exist on AWS then
   # the proxied object will be set to nil.
-  def refresh!(options = {:bucket_name => FSDS::S3.bucket.to_s})
+  def refresh!(options = {:bucket_name => UFS::S3.bucket.to_s})
     begin
       proxy :force do
         ::AWS::S3::S3Object.find(path.to_s.gsub(/^\//,''), options[:bucket_name].to_s)
@@ -222,7 +222,7 @@ private
   #     s3.value = data           # This stores the data variable as the content of the S3Object
   #     s3.store                  # This writes the S3 Object to the AWS::S3 store
   #   end
-  def initiate(options = {:bucket_name => FSDS::S3.bucket.to_s}, &block)
+  def initiate(options = {:bucket_name => UFS::S3.bucket.to_s}, &block)
     proxy(vassal(options) || new_s3object(path.to_s.gsub(/^\//,'')), :force)
     unless block.nil?
       yield proxy
@@ -235,7 +235,7 @@ private
   # The key must be a string or support the .to_s method
   # The bucket is optional as long as the defult bucket has been set.
   # If a bucket is supplied it must be a AWS::S3::Bucket not the name of a bucket.
-  def new_s3object(key, bucket = FSDS::S3.bucket)
+  def new_s3object(key, bucket = UFS::S3.bucket)
     s3 = ::AWS::S3::S3Object.new
     s3.key = key.to_s
     s3.bucket = bucket
@@ -247,12 +247,12 @@ end
 # Proxy instance methods as class methods
 [ 'create!', 'mkdir!', 'mkdir', 'to_a', 'exists?', 'move', 'group', 'group!', 'group?', 'owner', 'touch',
   'owner!', 'owner?', 'destroy!', 'permissions', 'permissions!', 'permissions?'].each do |meth|
-  FSDS::S3::S3Object.add_class_method meth do |*args, &block|
+  UFS::S3::S3Object.add_class_method meth do |*args, &block|
     self.new(*args).send meth, &block
   end
 end
 
-# Register class methods with FSDS::FS
+# Register class methods with UFS::FS
 ['touch', 'create!', 'concat!', 'concat', '<<', 'size', 'exists?'].each do |meth|
-  FSDS::S3.register_downline_public_methods(meth, FSDS::S3::S3Object)
+  UFS::S3.register_downline_public_methods(meth, UFS::S3::S3Object)
 end
