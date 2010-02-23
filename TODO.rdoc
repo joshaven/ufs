@@ -1,4 +1,5 @@
 Consider changing name from FSDS to: "UFS - The Unified File Systems Gem"
+ other ideas: "Universal File Access", "Common File Access", "Standardized Data Access"
 
 
 RDocs: Create standard fs methods doc file in FSDS and remove anything from individual adapters... 
